@@ -1,0 +1,50 @@
+<launch>
+    <arg name="world_init_x"       default="0.0" />
+    <arg name="world_init_y"       default="0.0" />
+    <arg name="world_init_z"       default="0.045" />
+    <arg name="world_init_heading" default="0.0" />
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="paused" default="false"/>
+        <arg name="use_sim_time" default="true"/>
+        <arg name="gui" default="true"/>
+        <arg name="headless" default="false"/>
+        <arg name="debug" default="false"/>
+        <arg name="verbose" default="true"/>
+    </include>
+
+    <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find single_arm_pkg)/urdf/single_6dof_arm.xacro'" />
+
+    <node name="robot_spawn" pkg="gazebo_ros" type="spawn_model" output="screen"
+          args="-urdf -param robot_description -model hand -x $(arg world_init_x) -y $(arg world_init_y) -z $(arg world_init_z) -Y $(arg world_init_heading)" />
+
+    <!-- Loading the controllers configuration:
+     -->
+    <rosparam file="$(find single_arm_pkg)/config/single_arm_ros_control.yaml" command="load"/>
+
+    <!-- Loading the controllers:
+     -->
+    <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" ns="/arm"
+          args="--namespace=/arm
+          joint_states_controller
+          arm_zero_joint_effort_controller
+          arm_one_joint_effort_controller
+          arm_two_joint_effort_controller
+          arm_three_joint_effort_controller
+          arm_four_joint_effort_controller
+          hand_joint_effort_controller
+            ">
+    </node>
+
+
+    <!-- 'robot_state_publisher' reads urdf description of robot and publishes
+    each tf of robot based on the movement that the robot is doing.
+    -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="false" output="screen">
+        <remap from="/joint_states" to="/arm/joint_states"/>
+    </node>
+
+    <node name="single_arm_node" pkg="single_arm_pkg" type="main_single_arm.py" output="screen"></node>
+
+
+</launch>

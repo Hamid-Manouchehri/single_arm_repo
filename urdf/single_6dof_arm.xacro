@@ -1,0 +1,616 @@
+<?xml version="1.0"?>
+<!-- Bimanual Manipulator -->
+<robot name="robot_description" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <gazebo>
+      <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
+          <robotNamespace>/arm</robotNamespace>
+          <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+      </plugin>
+  </gazebo>
+
+  <!-- Constants for robot dimensions -->
+  <xacro:property name="PI" value="3.1415926535897931"/>
+
+
+  <xacro:property name="mass_trunk" value="3" />
+  <xacro:property name="mass_parent_neck" value="1" />
+  <xacro:property name="mass_child_neck" value="5" />
+  <xacro:property name="mass_arm_zero" value=".5" />
+  <xacro:property name="mass_arm_one" value="1.5" />
+  <xacro:property name="mass_arm_two" value=".5" />
+  <xacro:property name="mass_arm_three" value=".5" />
+  <xacro:property name="mass_arm_four" value=".5" />
+  <xacro:property name="mass_hand" value="1" />
+  <xacro:property name="mass_box" value=".1" />
+
+
+
+  <xacro:property name="width_trunk" value="0.2" />
+  <xacro:property name="length_trunk" value="0.3" />
+  <xacro:property name="height_trunk" value="0.09" />
+
+  <xacro:property name="width_parent_neck" value="0.05" />
+  <xacro:property name="length_parent_neck" value="0.05" />
+  <xacro:property name="height_parent_neck" value="0.1" />
+
+  <xacro:property name="width_child_neck" value="0.3" />
+  <xacro:property name="length_child_neck" value="0.07" />
+  <xacro:property name="height_child_neck" value="0.1" />
+
+  <xacro:property name="width_arm" value="0.1" />
+
+  <xacro:property name="length_arm_zero" value="0.1" />
+  <xacro:property name="length_arm_one" value="0.4" />
+  <xacro:property name="length_arm_two" value="0.2" />
+  <xacro:property name="length_arm_three" value="0.1" />
+  <xacro:property name="length_arm_four" value="0.1" />
+  <xacro:property name="length_hand" value="0.15" />
+
+  <xacro:property name="width_box" value="0.4" />
+  <xacro:property name="length_box" value="0.25" />
+  <xacro:property name="height_box" value="0.15" />
+
+
+  <xacro:property name="damping_ratio_arm_zero" value="1" />
+  <xacro:property name="friction_ratio_arm_zero" value=".1" />
+
+  <xacro:property name="damping_ratio_arm_one" value="1" />
+  <xacro:property name="friction_ratio_arm_one" value="1" />
+
+  <xacro:property name="damping_ratio_arm_two" value="1" />
+  <xacro:property name="friction_ratio_arm_two" value="1" />
+
+  <xacro:property name="damping_ratio_arm_three" value="1" />
+  <xacro:property name="friction_ratio_arm_three" value="1" />
+
+  <xacro:property name="damping_ratio_arm_four" value="1" />
+  <xacro:property name="friction_ratio_arm_four" value="1" />
+
+  <xacro:property name="damping_ratio_hand" value="1" />
+  <xacro:property name="friction_ratio_hand" value="1" />
+
+
+  <xacro:property name="i_trunk_xx" value="0.011253" />
+  <xacro:property name="i_trunk_yy" value="0.036203" />
+  <xacro:property name="i_trunk_zz" value="0.042673" />
+
+  <xacro:property name="i_parent_neck_xx" value="1" />
+  <xacro:property name="i_parent_neck_yy" value="1" />
+  <xacro:property name="i_parent_neck_zz" value="1" />
+
+  <xacro:property name="i_child_neck_xx" value="1" />
+  <xacro:property name="i_child_neck_yy" value="1" />
+  <xacro:property name="i_child_neck_zz" value="1" />
+
+  <xacro:property name="i_arm_zero_xx" value="${mass_arm_zero/12*(width_arm*width_arm + width_arm*width_arm)}" />
+  <xacro:property name="i_arm_zero_yy" value="${mass_arm_zero/12*(width_arm*width_arm + length_arm_zero*length_arm_zero)}" />
+  <xacro:property name="i_arm_zero_zz" value="${mass_arm_zero/12*(width_arm*width_arm + length_arm_zero*length_arm_zero)}" />
+
+  <xacro:property name="i_arm_one_xx" value="${mass_arm_one/12*(width_arm*width_arm + width_arm*width_arm)}" />
+  <xacro:property name="i_arm_one_yy" value="${mass_arm_one/12*(width_arm*width_arm + length_arm_one*length_arm_one)}" />
+  <xacro:property name="i_arm_one_zz" value="${mass_arm_one/12*(width_arm*width_arm + length_arm_one*length_arm_one)}" />
+
+  <xacro:property name="i_arm_two_xx" value="${mass_arm_two/12*(width_arm*width_arm + width_arm*width_arm)}" />
+  <xacro:property name="i_arm_two_yy" value="${mass_arm_two/12*(width_arm*width_arm + length_arm_two*length_arm_two)}" />
+  <xacro:property name="i_arm_two_zz" value="${mass_arm_two/12*(width_arm*width_arm + length_arm_two*length_arm_two)}" />
+
+  <xacro:property name="i_arm_three_xx" value="${mass_arm_three/12*(width_arm*width_arm + width_arm*width_arm)}" />
+  <xacro:property name="i_arm_three_yy" value="${mass_arm_three/12*(width_arm*width_arm + length_arm_three*length_arm_three)}" />
+  <xacro:property name="i_arm_three_zz" value="${mass_arm_three/12*(width_arm*width_arm + length_arm_three*length_arm_three)}" />
+
+  <xacro:property name="i_arm_four_xx" value="${mass_arm_four/12*(width_arm*width_arm + width_arm*width_arm)}" />
+  <xacro:property name="i_arm_four_yy" value="${mass_arm_four/12*(width_arm*width_arm + length_arm_four*length_arm_four)}" />
+  <xacro:property name="i_arm_four_zz" value="${mass_arm_four/12*(width_arm*width_arm + length_arm_four*length_arm_four)}" />
+
+  <xacro:property name="i_hand_xx" value="${mass_hand/12*(width_arm*width_arm + width_arm*width_arm)}" />
+  <xacro:property name="i_hand_yy" value="${mass_hand/12*(width_arm*width_arm + length_hand*length_hand)}" />
+  <xacro:property name="i_hand_zz" value="${mass_hand/12*(width_arm*width_arm + length_hand*length_hand)}" />
+
+  <xacro:property name="i_box_xx" value="${mass_box/12*(length_box*length_box + height_box*height_box)}" />
+  <xacro:property name="i_box_yy" value="${mass_box/12*(width_box*width_box + height_box*height_box)}" />
+  <xacro:property name="i_box_zz" value="${mass_box/12*(width_box*width_box + length_box*length_box)}" />
+
+
+
+  <gazebo reference="trunk">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/White</material>
+  </gazebo>
+
+  <gazebo reference="world">
+      <static>true</static>
+  </gazebo>
+
+  <gazebo reference="trunk">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="parent_neck">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="child_neck">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/DarkGrey</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="arm_zero">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/Grey</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="arm_one">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/White</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="arm_two">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/Grey</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="arm_three">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/White</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="arm_four">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/Grey</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+  <gazebo reference="hand">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/Red</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
+
+
+
+
+  <link name="world"/>
+
+  <joint name="trunk_to_world" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <parent link="world"/>
+    <child link="trunk"/>
+  </joint>
+
+  <!-- Base Link -->
+  <link name="trunk">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+	       <box size="${width_trunk} ${length_trunk} ${height_trunk}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+	       <box size="${width_trunk} ${length_trunk} ${height_trunk}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <mass value="${mass_trunk}"/>
+      <inertia
+        ixx="${i_trunk_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_trunk_yy}" iyz="0.0"
+    	  izz="${i_trunk_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="parent_neck_to_trunk" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0.08 ${height_trunk/2}"/>
+    <parent link="trunk"/>
+    <child link="parent_neck"/>
+  </joint>
+
+  <link name="parent_neck">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck/2}"/>
+      <geometry>
+	       <box size="${width_parent_neck} ${length_parent_neck} ${height_parent_neck}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck/2}"/>
+      <geometry>
+	       <box size="${width_parent_neck} ${length_parent_neck} ${height_parent_neck}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck/2}"/>
+      <mass value="${mass_parent_neck}"/>
+      <inertia
+        ixx="${i_parent_neck_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_parent_neck_yy}" iyz="0.0"
+    	  izz="${i_parent_neck_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="child_neck_to_parent_neck" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck}"/>
+    <parent link="parent_neck"/>
+    <child link="child_neck"/>
+  </joint>
+
+  <link name="child_neck">
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 ${height_child_neck/2}"/>
+      <geometry>
+	       <box size="${width_child_neck} ${length_child_neck} ${height_child_neck}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 ${height_child_neck/2}"/>
+      <geometry>
+	       <box size="${width_child_neck} ${length_child_neck} ${height_child_neck}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="0 0 ${height_child_neck/2}"/>
+      <mass value="${mass_child_neck}"/>
+      <inertia
+        ixx="${i_child_neck_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_child_neck_yy}" iyz="0.0"
+    	  izz="${i_child_neck_zz}"/>
+    </inertial>
+  </link>
+
+
+  <joint name="arm_zero_to_child_neck" type="revolute">
+    <axis xyz="1 0 0"/>
+    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <origin rpy="0 0 0" xyz="${width_child_neck/2} 0 ${height_child_neck/2}"/>
+    <parent link="child_neck"/>
+    <child link="arm_zero"/>
+    <dynamics damping="${damping_ratio_arm_zero}" friction="${friction_ratio_arm_zero}"/>
+  </joint>
+
+  <link name="arm_zero">
+    <collision>
+      <origin rpy="0 0 0" xyz="${length_arm_zero/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_zero} ${width_arm} ${width_arm}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="${length_arm_zero/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_zero} ${width_arm} ${width_arm}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="${length_arm_zero/2} 0 0"/>
+      <mass value="${mass_arm_zero}"/>
+      <inertia
+    	  ixx="${i_arm_zero_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_arm_zero_yy}" iyz="0.0"
+    	  izz="${i_arm_zero_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="arm_one_to_arm_zero" type="revolute">
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <origin rpy="0 0 ${PI/3}" xyz="${width_arm} 0 0"/>  <!-- in parent link frame -->
+    <parent link="arm_zero"/>
+    <child link="arm_one"/>
+    <dynamics damping="${damping_ratio_arm_one}" friction="${friction_ratio_arm_one}"/>
+  </joint>
+
+  <link name="arm_one">
+    <collision>
+      <origin rpy="0 0 0" xyz="${length_arm_one/2} 0 0"/> <!-- in local frame -->
+      <geometry>
+	       <box size="${length_arm_one} ${width_arm} ${width_arm}"/>  <!-- in local frame -->
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="${length_arm_one/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_one} ${width_arm} ${width_arm}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="${length_arm_one/2} 0 0"/>
+      <mass value="${mass_arm_one}"/>
+      <inertia
+    	  ixx="${i_arm_one_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_arm_one_yy}" iyz="0.0"
+    	  izz="${i_arm_one_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="arm_two_to_arm_one" type="revolute">
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <origin rpy="0 0 ${PI/3}" xyz="${length_arm_one} 0 0"/>
+    <parent link="arm_one"/>
+    <child link="arm_two"/>
+    <dynamics damping="${damping_ratio_arm_two}" friction="${friction_ratio_arm_two}"/>
+  </joint>
+
+  <link name="arm_two">
+    <collision>
+      <origin rpy="0 0 0" xyz="${length_arm_two/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_two} ${width_arm} ${width_arm}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="${length_arm_two/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_two} ${width_arm} ${width_arm}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="${length_arm_two/2} 0 0"/>
+      <mass value="${mass_arm_two}"/>
+      <inertia
+        ixx="${i_arm_two_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_arm_two_yy}" iyz="0.0"
+    	  izz="${i_arm_two_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="arm_three_to_arm_two" type="revolute">
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <origin rpy="0 0 0" xyz="${length_arm_two} 0 0"/>
+    <parent link="arm_two"/>
+    <child link="arm_three"/>
+    <dynamics damping="${damping_ratio_arm_three}" friction="${friction_ratio_arm_three}"/>
+  </joint>
+
+  <link name="arm_three">
+    <collision>
+      <origin rpy="0 0 0" xyz="${length_arm_three/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_three} ${width_arm} ${width_arm}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="${length_arm_three/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_three} ${width_arm} ${width_arm}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="${length_arm_three/2} 0 0"/>
+      <mass value="${mass_arm_three}"/>
+      <inertia
+        ixx="${i_arm_three_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_arm_three_yy}" iyz="0.0"
+    	  izz="${i_arm_three_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="arm_four_to_arm_three" type="revolute">
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <origin rpy="0 0 0" xyz="${length_arm_three} 0 0"/>
+    <parent link="arm_three"/>
+    <child link="arm_four"/>
+    <dynamics damping="${damping_ratio_arm_four}" friction="${friction_ratio_arm_four}"/>
+  </joint>
+
+  <link name="arm_four">
+    <collision>
+      <origin rpy="0 0 0" xyz="${length_arm_four/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_four} ${width_arm} ${width_arm}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="${length_arm_four/2} 0 0"/>
+      <geometry>
+	       <box size="${length_arm_four} ${width_arm} ${width_arm}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="${length_arm_four/2} 0 0"/>
+      <mass value="${mass_arm_four}"/>
+      <inertia
+        ixx="${i_arm_four_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_arm_four_yy}" iyz="0.0"
+    	  izz="${i_arm_four_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <joint name="hand_to_arm_four" type="revolute">
+    <axis xyz="0 0 1"/>
+    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <origin rpy="0 0 ${-PI/6}" xyz="${length_arm_four} 0 0"/>
+    <parent link="arm_four"/>
+    <child link="hand"/>
+    <dynamics damping="${damping_ratio_hand}" friction="${friction_ratio_hand}"/>
+  </joint>
+
+  <link name="hand">
+    <collision>
+      <origin rpy="0 0 0" xyz="${length_hand/2} 0 0"/>
+      <geometry>
+	       <box size="${length_hand} ${width_arm} ${width_arm}"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0 0 0" xyz="${length_hand/2} 0 0"/>
+      <geometry>
+	       <box size="${length_hand} ${width_arm} ${width_arm}"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+    <inertial>
+      <origin rpy="0 0 0" xyz="${length_hand/2} 0 0"/>
+      <mass value="${mass_hand}"/>
+      <inertia
+        ixx="${i_hand_xx}" ixy="0.0" ixz="0.0"
+    	  iyy="${i_hand_yy}" iyz="0.0"
+    	  izz="${i_hand_zz}"/>
+    </inertial>
+  </link>
+
+
+
+  <!-- <joint name="box_to_hand" type="fixed">
+      <origin rpy="0 0 0" xyz="0 ${width_box/2 + width_arm/2} 0"/>
+      <parent link="hand"/>
+      <child link="box"/>
+  </joint>
+
+  <link name="box">
+      <visual>
+          <origin rpy="0 0 0" xyz="${length_box/2} 0 0"/>
+          <geometry>
+              <box size="${length_box} ${width_box} ${height_box}"/>
+          </geometry>
+          <material name="green"/>
+      </visual>
+      <collision>
+          <origin rpy="0 0 0" xyz="${length_box/2} 0 0"/>
+          <geometry>
+              <box size="${length_box} ${width_box} ${height_box}"/>
+          </geometry>
+      </collision>
+      <inertial>
+          <origin rpy="0 0 0" xyz="${length_box/2} 0 0"/>
+          <mass value="${mass_box}"/>
+          <inertia
+            ixx="${i_box_xx}" ixy="0.0" ixz="0.0"
+        	  iyy="${i_box_yy}" iyz="0.0"
+        	  izz="${i_box_zz}"/>
+      </inertial>
+  </link> -->
+
+
+
+  <transmission name="tran1">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_zero_to_child_neck">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="motor1">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="tran2">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_one_to_arm_zero">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="motor2">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="tran3">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_two_to_arm_one">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="motor3">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="tran4">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_three_to_arm_two">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="motor4">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="tran5">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="arm_four_to_arm_three">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="motor5">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+  <transmission name="tran6">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="hand_to_arm_four">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="motor6">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+  </transmission>
+
+</robot>
