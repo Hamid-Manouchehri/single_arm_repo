@@ -7,9 +7,7 @@ Created on Sat Aug 27 11:20:33 2022
 """
 from __future__ import division
 from numpy.linalg import inv, pinv
-from scipy.linalg import qr
 import rbdl
-from scipy.linalg import sqrtm
 import os
 import csv
 import time
@@ -34,8 +32,8 @@ finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite tim
 workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 
-kp_a = 110
-kd_a = kp_a/8
+kp_a = 100
+kd_a = kp_a/10
 
 startTime = 0
 """
@@ -43,24 +41,24 @@ startTime = 0
 Note: any modification to trajectory need modification of 'LABEL_1',
 function of 'ChooseRef' and of course the following trajecory definitions:
 """
-desiredInitialStateOfObj_traj_1 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([0., .5, 0.202, 0., 0., np.pi/2])
+desiredInitialStateOfTipOfEndEffector_traj_1 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
+desiredFinalStateOfTipOfEndEffector_traj_1 = np.array([0.25, .5, 0.202, 0., 0., 3*np.pi/2])
 
-desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
-desiredFinalStateOfObj_traj_2 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
+desiredInitialStateOfTipOfEndEffector_traj_2 = desiredFinalStateOfTipOfEndEffector_traj_1
+desiredFinalStateOfTipOfEndEffector_traj_2 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
 
-desiredInitialStateOfObj_traj_3 = desiredFinalStateOfObj_traj_2
-desiredFinalStateOfObj_traj_3 = desiredInitialStateOfObj_traj_1
+desiredInitialStateOfTipOfEndEffector_traj_3 = desiredFinalStateOfTipOfEndEffector_traj_2
+desiredFinalStateOfTipOfEndEffector_traj_3 = desiredInitialStateOfTipOfEndEffector_traj_1
 
 
-initPoseVelAccelOfObj_traj_1 = [desiredInitialStateOfObj_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-finalPoseVelAccelOfObj_traj_1 = [desiredFinalStateOfObj_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+initPoseVelAccelOfTipOfEndEffector_traj_1 = [desiredInitialStateOfTipOfEndEffector_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+finalPoseVelAccelOfTipOfEndEffector_traj_1 = [desiredFinalStateOfTipOfEndEffector_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
 
-initPoseVelAccelOfObj_traj_2 = [desiredInitialStateOfObj_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-finalPoseVelAccelOfObj_traj_2 = [desiredFinalStateOfObj_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+initPoseVelAccelOfTipOfEndEffector_traj_2 = [desiredInitialStateOfTipOfEndEffector_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+finalPoseVelAccelOfTipOfEndEffector_traj_2 = [desiredFinalStateOfTipOfEndEffector_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
 
-initPoseVelAccelOfObj_traj_3 = [desiredInitialStateOfObj_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-finalPoseVelAccelOfObj_traj_3 = [desiredFinalStateOfObj_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+initPoseVelAccelOfTipOfEndEffector_traj_3 = [desiredInitialStateOfTipOfEndEffector_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+finalPoseVelAccelOfTipOfEndEffector_traj_3 = [desiredFinalStateOfTipOfEndEffector_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
 
 
 # Object params
@@ -73,7 +71,7 @@ M_o = np.eye(workspaceDof)*mass_box
 M_o[2, 2] = io_zz
 h_o = np.array([[0], [mass_box*g0], [0]])
 
-q_obj = [desiredInitialStateOfObj_traj_1]
+q_obj = [desiredInitialStateOfTipOfEndEffector_traj_1]
 q = [[0.]*singleArmDof]
 q = np.hstack((q, q_obj))
 
@@ -266,7 +264,6 @@ def JointStatesCallback(data):
     qDotCurrent[5] = qDot[5]  # hand
 
 
-
     x_des_t, xdot_des_t, xddot_des_t, time_prime = ChooseRef(time_)
 
     ## trajectory generation of end-effector: (task-space)
@@ -302,20 +299,19 @@ if __name__ == '__main__':
     ## Generate desired states for the whole trajectory of object: (LABEL_1)
     ## First trajectory:
     desPose_traj_1, desVel_traj_1, desAccel_traj_1 = \
-        traj_plan(0, t_end/3, initPoseVelAccelOfObj_traj_1, finalPoseVelAccelOfObj_traj_1)
+        traj_plan(0, t_end/3, initPoseVelAccelOfTipOfEndEffector_traj_1, finalPoseVelAccelOfTipOfEndEffector_traj_1)
 
     ## Second trajectory:
     desPose_traj_2, desVel_traj_2, desAccel_traj_2 = \
-        traj_plan(0, t_end/3, initPoseVelAccelOfObj_traj_2, finalPoseVelAccelOfObj_traj_2)
+        traj_plan(0, t_end/3, initPoseVelAccelOfTipOfEndEffector_traj_2, finalPoseVelAccelOfTipOfEndEffector_traj_2)
 
     ## Third trajectory:
     desPose_traj_3, desVel_traj_3, desAccel_traj_3 = \
-        traj_plan(0, t_end/3, initPoseVelAccelOfObj_traj_3, finalPoseVelAccelOfObj_traj_3)
+        traj_plan(0, t_end/3, initPoseVelAccelOfTipOfEndEffector_traj_3, finalPoseVelAccelOfTipOfEndEffector_traj_3)
 
     rlx = range(len(desPose_traj_1))  # range(0, 6) --> 0, 1, 2, 3, 4, 5
 
     try:
-        startTime = time.time()
         rospy.Subscriber("/arm/joint_states", JointState, JointStatesCallback)
         rospy.spin()
 
