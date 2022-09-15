@@ -13,7 +13,7 @@ import csv
 import rospy
 import matplotlib.pyplot as plt
 from sys import path
-path.insert(1, '/home/rebel/bimanual_ws/src/main_single_arm_dic/config/')  # TODO: Insert dir of config folder of the package.
+path.insert(1, '/home/rebel/bimanual_ws/src/single_arm_pkg/config/')  # TODO: Insert dir of config folder of the package.
 import config
 
 titleOfPlot = "< right arm torque profile >"  # TODO

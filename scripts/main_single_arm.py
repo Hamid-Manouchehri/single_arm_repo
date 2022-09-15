@@ -21,31 +21,21 @@ from sys import path
 path.insert(1, '/home/rebel/bimanual_ws/src/single_arm_pkg/config/')  # TODO: Insert dir of config folder of the package.
 import config
 os.chdir('/home/rebel/bimanual_ws/src/single_arm_pkg/scripts/')  # TODO: Insert dir of config folder of the package.
-import rbdl_methods as RBDL  # TODO: change the file name if necessary.
+import methods  # TODO: change the file name if necessary.
 ####
 
 
 time_ = 0
 dt = 0.01
-t_end = 5
+t_end = 3
 g0 = 9.81
-plotLegend = ''
-writeHeaderOnceFlag = True
 finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite time
 
 workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 
-min_lambda = False  # TODO
-min_tangent = False  # TODO
-
-kp_grav = 3
-
-kp_a = 2
-kd_a = kp_a/5
-
-kp_tau = 0
-kd_tau = 0
+kp_a = 110
+kd_a = kp_a/8
 
 startTime = 0
 """
@@ -53,13 +43,11 @@ startTime = 0
 Note: any modification to trajectory need modification of 'LABEL_1',
 function of 'ChooseRef' and of course the following trajecory definitions:
 """
-desiredInitialStateOfObj_traj_1 = np.array([0., 0.9, 0.])
-# desiredFinalStateOfObj_traj_1 = np.array([-.5, .5, +np.pi/3])
-desiredFinalStateOfObj_traj_1 = np.array([0., .5, 0.])
+desiredInitialStateOfObj_traj_1 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([0., .5, 0.202, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
-# desiredFinalStateOfObj_traj_2 = np.array([.5, .5, -np.pi/3])
-desiredFinalStateOfObj_traj_2 = np.array([0., .9, 0.])
+desiredFinalStateOfObj_traj_2 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_3 = desiredFinalStateOfObj_traj_2
 desiredFinalStateOfObj_traj_3 = desiredInitialStateOfObj_traj_1
@@ -86,13 +74,13 @@ M_o[2, 2] = io_zz
 h_o = np.array([[0], [mass_box*g0], [0]])
 
 q_obj = [desiredInitialStateOfObj_traj_1]
-q = [[0.]*2*singleArmDof]
+q = [[0.]*singleArmDof]
 q = np.hstack((q, q_obj))
 
-q_des = [q[-1][:2*singleArmDof]]
+q_des = [q[-1][:singleArmDof]]
 
-qctrl_des_prev = q_des[-1][:2*singleArmDof]
-dqctrl_des_prev = np.zeros(2*singleArmDof)  # TODO: we usually start from rest
+qctrl_des_prev = q_des[-1][:singleArmDof]
+dqctrl_des_prev = np.zeros(singleArmDof)  # TODO: we usually start from rest
 
 
 CSVFileName_plot_data = config.main_single_arm_dic['CSVFileName']
@@ -118,72 +106,6 @@ pub_hand = rospy.Publisher('/arm/hand_joint_effort_controller/command',
                             Float64, queue_size=10)
 
 rospy.init_node('main_single_arm_node')
-
-def QRDecompose(J):
-
-    JT = J.T
-    m, n = JT.shape
-
-    if m == 0 or n == 0:
-        raise TypeError(
-            'Try to calculate QR decomposition, while there is no contact!')
-
-    qr_Q, qr_R = qr(JT)
-
-    qr_R = qr_R[:n, :]
-
-    return qr_Q, qr_R
-
-
-def CalcPqr(J, Su):
-    qr_Q, qr_R = QRDecompose(J)
-    return np.dot(Su, qr_Q.T), qr_Q, qr_R
-
-
-def Task2Joint(J_a, J_b, J_oa, J_ob, J_rel, dJ_adq_a, dJ_bdq_b, r_o_a, r_o_b,
-               x_o, dx_o, X_des, Xdot_des, Xddot_des):
-    """Calculate equ(21), qDDot_des."""
-
-    dth_o = dx_o[2]  # angular velocity of obj in base frame (rad/s)
-
-    invJ_ob = inv(J_ob)
-    J_A = J_rel
-
-    J_B = np.dot(invJ_ob, J_b)  # equ(5) / qDot
-
-    # GDot_oa*qDot_o: (1*3)
-    dJ_oadz_o = np.cross([0, 0, dth_o], np.cross(r_o_a, [0, 0, dth_o]))
-    # GDot_ob*GInv_ob*J_b*qDot_o: (1*3)
-    dJ_obdz_o = np.cross([0, 0, dth_o], np.cross(r_o_b, [0, 0, dth_o]))
-
-    # derivative of equ(7) * qDot:(1*3)
-    dJ_A_dq = dJ_adq_a - dJ_oadz_o - np.dot(J_oa, np.dot(invJ_ob,
-                                                         dJ_bdq_b - dJ_obdz_o))
-
-    # an element of equ(21):(1*3)
-    dJ_B_dq = np.dot(invJ_ob, dJ_bdq_b - dJ_obdz_o)
-
-    Xddot_des_A = np.zeros(workspaceDof)
-
-    # below equ(21): generalized acceleration of object
-    Xddot_des_B = Xddot_des + kd_a*(Xdot_des - dx_o) + kp_a*(X_des - x_o)  # a(1*3)
-
-    Xddot_des_A = np.vstack((Xddot_des_A.reshape(workspaceDof, 1), Xddot_des_B.reshape(workspaceDof, 1)))
-
-    J_A = np.vstack((J_A, J_B))
-    dJ_A_dq = np.vstack((dJ_A_dq.reshape(workspaceDof, 1), dJ_B_dq.reshape(workspaceDof, 1)))
-    # print(J_A)
-
-    J_B = np.array([])
-    qddot_des = np.dot(pinv(J_A), Xddot_des_A - dJ_A_dq).flatten()  # equ(21)
-    # print(qddot_des)
-
-    q_des, qdot_des = Traj_Estimate(qddot_des)
-
-    Xddot_des_after = Xddot_des_B
-    dJ_obdz_o_des = dJ_obdz_o
-
-    return q_des, qdot_des, qddot_des, Xddot_des_after, dJ_obdz_o_des
 
 
 def Traj_Estimate(qdd):
@@ -257,184 +179,6 @@ def traj_plan(t_start, t_end, z_start_o, z_end_o, traj_type='Quantic'):
     return [desiredGeneralizedTraj, desiredGeneralizedVel,
             desiredGeneralizedAccel]
 
-def IntForceParam_mine(J_a, J_b, J_oa, J_ob, S, Mqh, theta, W_lam_i=None):
-    """Minimizing constaint force."""
-    J = np.vstack((J_a, J_b))  # (6*6)
-    k, n = np.shape(J)
-    Sc = np.hstack((np.eye(k), np.zeros((k, n - k))))
-
-    Q, RR = qr(J.T)  # (6*6), (6*6)
-
-    R = RR[:k, :k]
-
-    if W_lam_i is None:
-        W_lam_i = np.eye(R.shape[0])  # I(6*6)
-
-    if min_tangent:
-        WW = np.diag([1., 10, 2])
-        Ra = Rotation(theta).T
-        Rb = Rotation(theta).T
-
-        auxa = np.dot(Ra.T, np.dot(WW, Ra))
-        auxb = np.dot(Rb.T, np.dot(WW, Rb))
-
-        W_lam_i[:3, :3] = auxa
-        W_lam_i[3:, 3:] = auxb
-
-    W_lam = W_lam_i  # (6*6)
-
-    # below equ(15)(6*6):
-    Wc = np.dot(Q, np.dot(Sc.T, np.dot(inv(R.T),
-                                       np.dot(W_lam,
-                                       np.dot(inv(R), np.dot(Sc, Q.T))))))
-
-    # equ(15):
-    W = np.dot(S, np.dot(Wc, S.T))  # (6*6)
-    tau_0 = np.dot(S, np.dot(Wc.T, Mqh))  # (6*6)
-
-    return W, tau_0
-
-
-def Rotation(t):  # Rotation around Z-axis of joint
-    return np.array([np.cos(t), -np.sin(t), 0,
-                     np.sin(t), np.cos(t), 0,
-                     0, 0, 1]).reshape(3, 3)
-
-
-def WriteToCSV(data, legendList=None, t=None):
-    """
-    Write data to the CSV file to have a live plot by reading the file ...
-    simulataneously.
-
-    Pass 'data' as a list of  data and 'legendList' as a list of string type,
-    legend for each value of the plot.
-    Note: 'legendList' and 't' are arbitrary arguments.
-    """
-    global plotLegend, writeHeaderOnceFlag
-
-    plotLegend = legendList
-
-    if t is None:
-        ## to set the time if it is necessary.
-        t = time_
-
-    with open(pathToCSVFile + CSVFileName_plot_data, 'a', newline='') as \
-            file:
-        writer = csv.writer(file)
-
-        if writeHeaderOnceFlag is True and legendList is not None:
-            ## Add header to the CSV file.
-            writer.writerow(np.hstack(['time', legendList]))
-            writeHeaderOnceFlag = False
-
-        writer.writerow(np.hstack([t, data]))  # the first element is time var.
-
-
-def InverseDynamics(q, dq, ddq, X_des, Xdot_des, Xddot_des,
-                    W=None, tau_0=None, kp=None, kd=None):
-
-    JJ_a = RBDL.jc_right(loaded_model, q)
-    JJ_b = RBDL.jc_left(loaded_model, q)
-    # print(np.round(JJ_a, 2), '\n')
-
-    J_a = np.hstack((JJ_a, np.zeros((workspaceDof, singleArmDof))))  # (6*6)
-    J_b = np.hstack((np.zeros((workspaceDof, singleArmDof)), JJ_b))  # (6*6)
-
-    dJ_adq_a = RBDL.CalcdJdq_r(loaded_model, q, dq, ddq)  # JDot_a*qDot_a(1*3)
-    dJ_bdq_b = RBDL.CalcdJdq_l(loaded_model, q, dq, ddq)  # JDot_b*qDot_b(1*3)
-    # print(np.round(dJ_adq_a, 2), '\n')
-
-    x_a = RBDL.pose_end_r(loaded_model, q)
-    x_b = RBDL.pose_end_l(loaded_model, q)
-    # print(np.round(x_a, 4), '\n')
-
-    X_o = RBDL.GeneralizedPoseOfObj(loaded_model, q)
-    # print(np.round(X_o, 3))
-
-    # generalized postion of object with repect to 'hand a' tip in base frame:
-    r_o_a = X_o - x_a
-    r_o_b = X_o - x_b
-
-    J_oa = np.array([[1, 0, r_o_a[1]], [0, 1, - r_o_a[0]], [0, 0, 1]])  # G_oa
-    J_ob = np.array([[1, 0, r_o_b[1]], [0, 1, - r_o_b[0]], [0, 0, 1]])  # G_ob
-
-    # J_g: equ(7)
-    J_rel = J_a - np.dot(J_oa, np.dot(inv(J_ob), J_b))  # (3*12)
-
-    dX_o = RBDL.CalcGeneralizedVelOfObject(loaded_model, q, ddq)
-
-    # Plan Joint-space trajectories
-    q_des, qdot_des, qddot_des, xddot_des_after, dJ_obdz_o = \
-        Task2Joint(J_a, J_b, J_oa, J_ob, J_rel, dJ_adq_a, dJ_bdq_b, r_o_a,
-                   r_o_b, X_o, dX_o, X_des, Xdot_des, Xddot_des)
-
-    M = RBDL.CalcM(loaded_model, q)
-    h = RBDL.CalcH(loaded_model, q, ddq)
-    # print(np.round(M, 2))
-
-    Mqh = np.dot(M, qddot_des) + h  # left side of equ(8)
-
-    dJ_bdq_b_des = dJ_bdq_b
-    dJ_obdz_o_des = dJ_obdz_o
-
-    qddot_des_bar = qddot_des  # (1*6)
-
-    # below_1 equ(8):
-    M_bar = M + np.dot(J_b.T, np.dot(inv(J_ob.T),
-                                     np.dot(M_o, np.dot(inv(J_ob), J_b))))
-
-    # below_2 equ(8):
-    C_barq_des = np.dot(J_b.T, np.dot(inv(J_ob.T), np.dot(M_o,
-                                                          np.dot(inv(J_ob), dJ_bdq_b_des - dJ_obdz_o_des))))
-
-    h_bar = h.flatten() + np.dot(J_b.T, np.dot(inv(J_ob.T), h_o)).flatten()
-
-    # left side of equ(8), a (1,6) vector:
-    Mqh_bar_des = np.dot(M_bar, qddot_des_bar) + C_barq_des + h_bar
-
-    S = np.eye(2*singleArmDof)
-
-    # k: #independent contact constraints (3), n: #joints (6)
-    k, n = J_rel.shape
-
-    # Sc = np.hstack((np.eye(k), np.zeros((k, n - k))))
-    Su = np.hstack((np.zeros((n - k, k)), np.eye(n - k)))  # below equ(11)
-
-    # equ(11):
-    P, qr_Q, qr_R = CalcPqr(J_rel, Su)  # (3*6), (6*6), (3*3)
-
-    if W is None:
-        W = np.eye(S.shape[0])  # (6*6)
-
-    if tau_0 is None:
-        tau_0 = np.zeros(S.shape[0])  # (1*6)
-
-    if min_lambda:
-        # determnie optimal 'W(6*6)' and 'tau_0(1*6)' for the inv dynamics
-        # equ(10):
-        W, tau_0 = IntForceParam_mine(J_a, J_b, J_oa, J_ob, S, Mqh, X_o[2])
-
-    w_m_s = np.linalg.matrix_power(sqrtm(W), -1)
-    aux = pinv(np.dot(P, np.dot(S.T, w_m_s)))
-    winv = np.dot(w_m_s, aux)
-
-    invw = pinv(W)  # (12*12)
-    aux3 = np.dot(np.eye(S.shape[0]) - np.dot(winv, np.dot(P, S.T)), invw)
-
-    # equ(10):
-    invdyn = np.dot(winv, np.dot(P, Mqh_bar_des)).flatten() + np.dot(aux3, tau_0)
-
-    # J_prime = J_rel[:, [3, 4, 5]]
-    # constraint/contact force equ(12):
-    # Lambda_a = np.dot(inv(J_prime.T), Mqh_bar_des[[3, 4, 5]]
-    #                   - np.dot(S.T, invdyn)[[3, 4, 5]])
-
-    # kp, kd = 0, S = I(6*6):
-    desiredTorque = np.dot(S.T, invdyn) + 0*Mqh_bar_des + \
-        kp_tau * (q_des - q) + kd_tau * (qdot_des - dq)
-
-    return desiredTorque
-
 
 def ChooseRef(time):
     if time <= t_end/3:
@@ -449,28 +193,6 @@ def ChooseRef(time):
     return out
 
 
-############### Constants and Desired ################
-######################################################
-######################################################
-#####################################################
-############## Running Simulation #################6#
-
-def CalcTau(q, dq, ddq):
-
-    x_des_t, xdot_des_t, xddot_des_t, time_prime = ChooseRef(time_)
-
-    x_des_now = np.array([x_des_t[i](time_prime) for i in rlx]).flatten()
-    xdot_des_now = np.array([xdot_des_t[i](time_prime) for i in rlx]).flatten()
-    xddot_des_now = \
-        np.array([xddot_des_t[i](time_prime) for i in rlx]).flatten()
-
-    print(xdot_des_now)
-
-    tau = InverseDynamics(q, dq, ddq, x_des_now, xdot_des_now, xddot_des_now)
-
-    return tau
-
-
 def PubTorqueToGazebo(torqueVec):
     """
     Publish torques to Gazebo (manipulate the object in a linear trajectory)
@@ -481,6 +203,29 @@ def PubTorqueToGazebo(torqueVec):
     pub_3.publish(torqueVec[3])  # arm_three
     pub_4.publish(torqueVec[4])  # arm_four
     pub_hand.publish(torqueVec[5])  # hand
+
+
+
+def Task2Joint_(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
+
+    jac = methods.jc(loaded_model, qCurrent)
+
+    ## task-space:
+    poseOfTipOfEndEffector = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
+    velOfTipOfEndEffector = \
+        methods.CalcGeneralizedVelOfObject(loaded_model, qCurrent, qDotCurrent)
+
+    ## control acceleration of end-effector in task-space:
+    accelDes = accelDes + kd_a * (velDes - velOfTipOfEndEffector) + \
+                          kp_a * (poseDes - poseOfTipOfEndEffector)
+
+    dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
+
+    qDDotDes = pinv(jac).dot(accelDes - dJdq).flatten()  # equ(21)
+
+    qDes, qDotDes = Traj_Estimate(qDDotDes)
+
+    return qDes, qDotDes, qDDotDes
 
 
 def JointStatesCallback(data):
@@ -500,40 +245,45 @@ def JointStatesCallback(data):
     q = np.array(q, dtype=float)
     qDot = np.array(qDot, dtype=float)
 
-    q_rbdl = np.zeros(singleArmDof)
-    qDot_rbdl = np.zeros(singleArmDof)
-    qDDot_rbdl = np.zeros(singleArmDof)
+    qCurrent = np.zeros(singleArmDof)
+    qDotCurrent = np.zeros(singleArmDof)
+    qDDotCurrent = np.zeros(singleArmDof)
 
     ## joint-space of left arm:
-    q_rbdl[0] = q[4]  # arm_zero
-    q_rbdl[1] = q[1]  # arm_one
-    q_rbdl[2] = q[3]  # arm_two
-    q_rbdl[3] = q[2]  # arm_three
-    q_rbdl[4] = q[0]  # arm_four
-    q_rbdl[5] = q[5]  # hand
+    qCurrent[0] = q[4]  # arm_zero
+    qCurrent[1] = q[1]  # arm_one
+    qCurrent[2] = q[3]  # arm_two
+    qCurrent[3] = q[2]  # arm_three
+    qCurrent[4] = q[0]  # arm_four
+    qCurrent[5] = q[5]  # hand
 
     ## velocity of left arm:
-    qDot_rbdl[0] = qDot[4]  # arm_zero
-    qDot_rbdl[1] = qDot[1]  # arm_one
-    qDot_rbdl[2] = qDot[3]  # arm_two
-    qDot_rbdl[3] = qDot[2]  # arm_three
-    qDot_rbdl[4] = qDot[0]  # arm_four
-    qDot_rbdl[5] = qDot[5]  # hand
+    qDotCurrent[0] = qDot[4]  # arm_zero
+    qDotCurrent[1] = qDot[1]  # arm_one
+    qDotCurrent[2] = qDot[3]  # arm_two
+    qDotCurrent[3] = qDot[2]  # arm_three
+    qDotCurrent[4] = qDot[0]  # arm_four
+    qDotCurrent[5] = qDot[5]  # hand
 
 
-    # if (time.time() - startTime) > 4:
 
-    # desiredTauVec = CalcTau(q_rbdl, qDot_rbdl, qDDot_rbdl)
-    tau = RBDL.InverseDynamic(loaded_model, q_rbdl, qDot_rbdl, qDDot_rbdl)
-    tau[0] = tau[0] + kp_grav * (0. - q_rbdl[0])  # shoulder
-    PubTorqueToGazebo(tau)
+    x_des_t, xdot_des_t, xddot_des_t, time_prime = ChooseRef(time_)
 
+    ## trajectory generation of end-effector: (task-space)
+    xDes_now = np.array([x_des_t[i](time_prime) for i in rlx]).flatten()
+    xDotDes_now = np.array([xdot_des_t[i](time_prime) for i in rlx]).flatten()
+    xDDotDes_now = np.array([xddot_des_t[i](time_prime) for i in rlx]).flatten()
+
+    ## detemine desired states of robot in joint-space:
+    jointPose, jointVel, jointAccel = Task2Joint_(qCurrent, qDotCurrent, qDDotCurrent,
+                                                  xDes_now, xDotDes_now, xDDotDes_now)
+
+    jointTau = methods.InverseDynamic(loaded_model, jointPose, jointVel, jointAccel)
+
+    PubTorqueToGazebo(jointTau)
+
+    # methods.WriteToCSV(jointTau, time_)
     time_ += dt
-
-    # else:
-    #     tau = RBDL.InverseDynamic(loaded_model, q_rbdl, qDot_rbdl, qDDot_rbdl)
-    #     tau[0] = tau[0] + kp_grav * (0. - q_rbdl[0])  # shoulder
-    #     PubTorqueToGazebo(tau)
 
 
 def RemoveCSVFile(path, fileName):
