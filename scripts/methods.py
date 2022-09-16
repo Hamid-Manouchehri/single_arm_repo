@@ -128,12 +128,16 @@ def GeneralizedPoseOfObj(model, q):
 def jc(model, q):
 
     workspaceDof = 6
-    jc = np.zeros((workspaceDof, model.q_size))  # (3*12): due to whole 'model' and 'q' are imported.
+    jc = np.zeros((workspaceDof, model.q_size))  # (6*6): due to whole 'model' and 'q' are imported.
 
     tipOfEndEffectorInItsFrame = np.asarray([.15, 0.0, 0.0])
 
-    rbdl.CalcPointJacobian(model, q, model.GetBodyId('hand'),
-                           tipOfEndEffectorInItsFrame, jc)  # (3*12)
+    rbdl.CalcPointJacobian6D(model, q, model.GetBodyId('hand'),
+                             tipOfEndEffectorInItsFrame, jc)  # (6*6)
+
+    jc_r = jc[3:, :]
+    jc_l = jc[:3, :]
+    jc = np.vstack((jc_r, jc_l))
 
     return jc
 
@@ -183,10 +187,6 @@ def WriteToCSV(data, t, legendList=None):
     global plotLegend, writeHeaderOnceFlag
 
     plotLegend = legendList
-
-    # if t is None:
-    #     ## to set the time if it is necessary.
-    #     t = time_
 
     with open(pathToCSVFile + CSVFileName_plot_data, 'a', newline='') as file:
 
