@@ -26,14 +26,7 @@ def CalcM(model, q):
     """Compute join-space inertia matrices of arms."""
 
     M = np.zeros((model.q_size, model.q_size))  # (6*6)
-
     rbdl.CompositeRigidBodyAlgorithm(model, q, M, True)
-
-    # M_r = M[6:12, 6:12]
-    # M_l = M[:6, :6]
-    #
-    # M[:6, :6] = M_r
-    # M[6:12, 6:12] = M_l
 
     return M
 
@@ -41,18 +34,9 @@ def CalcM(model, q):
 
 def CalcH(model, q, qdot):
     """Compute centrifugal, coriolis and gravity force terms."""
-    damping = -2
+
     H = np.zeros(model.q_size)
-
     rbdl.InverseDynamics(model, q, qdot, np.zeros(model.qdot_size), H)  # (1*6)
-
-    # D = np.eye(len(q))*damping
-    # H = H - np.dot(D, qdot)
-    #
-    # H_l = H[:6]
-    # H_r = H[6:12]
-    #
-    # H = np.concatenate((H_r, H_l))
 
     return H
 
@@ -76,11 +60,11 @@ def pose_end(model, q):
                                           model.GetBodyId('hand'),
                                           tipOfEndEffectorInItsFrame)  # (1*3)
 
-    orientationOfRightHand = \
-        rbdl.CalcBodyWorldOrientation(model, q, model.GetBodyId('hand'))
-
-    eulerAngles = RotationMatToEuler(orientationOfRightHand)
-    pose = np.array([pose[0], pose[1], eulerAngles[2] - np.pi/2])
+    # orientationOfRightHand = \
+    #     rbdl.CalcBodyWorldOrientation(model, q, model.GetBodyId('hand'))
+    #
+    # eulerAngles = RotationMatToEuler(orientationOfRightHand)
+    # pose = np.array([pose[0], pose[1], eulerAngles[2] - np.pi/2])
 
     return pose
 
@@ -106,15 +90,14 @@ def RotationMatToEuler(rotationMat):
 ####### Compute position of COM of the object:
 def GeneralizedPoseOfObj(model, q):
 
-    tipOfEndEffectorInItsFrame = np.asarray([.15, 0.0, 0.0])
+    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
 
     poseOfObj = rbdl.CalcBodyToBaseCoordinates(model, q,
                                                model.GetBodyId('hand'),
-                                               tipOfEndEffectorInItsFrame)
+                                               poseOfObjInHandFrame)
 
-    rotationMatOfBox = \
-        rbdl.CalcBodyWorldOrientation(model, q,
-                                      model.GetBodyId('hand'))
+    rotationMatOfBox = rbdl.CalcBodyWorldOrientation(model, q,
+                                                     model.GetBodyId('hand'))
 
     orientationOfBox = RotationMatToEuler(rotationMatOfBox)
 
@@ -125,15 +108,15 @@ def GeneralizedPoseOfObj(model, q):
 
 
 
-def jc(model, q):
+def Jacobian(model, q):
 
     workspaceDof = 6
     jc = np.zeros((workspaceDof, model.q_size))  # (6*6): due to whole 'model' and 'q' are imported.
 
-    tipOfEndEffectorInItsFrame = np.asarray([.15, 0.0, 0.0])
+    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
 
     rbdl.CalcPointJacobian6D(model, q, model.GetBodyId('hand'),
-                             tipOfEndEffectorInItsFrame, jc)  # (6*6)
+                             poseOfObjInHandFrame, jc)  # (6*6)
 
     jc_r = jc[3:, :]
     jc_l = jc[:3, :]
@@ -148,11 +131,11 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
     Calculate generalized velocity of the object via the right-hand ...
     kinematics in base frame.
     """
-    tipOfEndEffectorInItsFrame = np.asarray([.15, 0.0, 0.0])
+    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
 
     generalizedVelOfObj = rbdl.CalcPointVelocity6D(model, q, qdot,
                                                    model.GetBodyId('hand'),
-                                                   tipOfEndEffectorInItsFrame)
+                                                   poseOfObjInHandFrame)
 
     angularVelOfObj = generalizedVelOfObj[:3]
     translationalVelOfObj = generalizedVelOfObj[3:6]
@@ -166,11 +149,11 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
 def CalcdJdq(model, q, qdot, qddot):
     """Compute linear acceleration of a point on body."""
 
-    tipOfEndEffectorInItsFrame = np.asarray([.15, 0.0, 0.0])
+    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
 
     bodyAccel = rbdl.CalcPointAcceleration6D(model, q, qdot, qddot,
                                              model.GetBodyId('hand'),
-                                             tipOfEndEffectorInItsFrame)  # (1*3)
+                                             poseOfObjInHandFrame)  # (1*3)
 
     return bodyAccel
 

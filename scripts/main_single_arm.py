@@ -7,6 +7,7 @@ Created on Sat Aug 27 11:20:33 2022
 """
 from __future__ import division
 from numpy.linalg import inv, pinv
+from scipy.linalg import qr, sqrtm
 import rbdl
 import os
 import csv
@@ -32,38 +33,12 @@ finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite tim
 workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 
-kp_a = 120
-kd_a = kp_a/12
+kp_a = 150
+kd_a = kp_a/10
 
-"""
-(x(m), y(m), z(m), roll(rad), pitch(rad), yaw(rad)):
-Note: any modification to trajectory need modification of 'LABEL_1',
-function of 'ChooseRef' and of course the following trajecory definitions:
+W_invDyn = np.eye(singleArmDof)
 
-Note: translational coordinations (x, y, z) are in world frame, so avoid values
-which are close to 'child_neck'.
-"""
-desiredInitialStateOfTipOfEndEffector_traj_1 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
-desiredFinalStateOfTipOfEndEffector_traj_1 = np.array([-0.1, .7, 0.702, 0., 0., np.pi/2])
-
-desiredInitialStateOfTipOfEndEffector_traj_2 = desiredFinalStateOfTipOfEndEffector_traj_1
-desiredFinalStateOfTipOfEndEffector_traj_2 = np.array([0.25, 0.775 + .15, 0.202, 0., 0., np.pi/2])
-
-desiredInitialStateOfTipOfEndEffector_traj_3 = desiredFinalStateOfTipOfEndEffector_traj_2
-desiredFinalStateOfTipOfEndEffector_traj_3 = desiredInitialStateOfTipOfEndEffector_traj_1
-
-
-initPoseVelAccelOfTipOfEndEffector_traj_1 = [desiredInitialStateOfTipOfEndEffector_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-finalPoseVelAccelOfTipOfEndEffector_traj_1 = [desiredFinalStateOfTipOfEndEffector_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-
-initPoseVelAccelOfTipOfEndEffector_traj_2 = [desiredInitialStateOfTipOfEndEffector_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-finalPoseVelAccelOfTipOfEndEffector_traj_2 = [desiredFinalStateOfTipOfEndEffector_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-
-initPoseVelAccelOfTipOfEndEffector_traj_3 = [desiredInitialStateOfTipOfEndEffector_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-finalPoseVelAccelOfTipOfEndEffector_traj_3 = [desiredFinalStateOfTipOfEndEffector_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-
-
-# Object params
+# Object parameters:
 mass_box = .1  # TODO: Check the parameters of the box in the 'upper_body.xacro' file.
 width_box = .4  # TODO
 length_box = .25  # TODO
@@ -73,7 +48,36 @@ M_o = np.eye(workspaceDof)*mass_box
 M_o[2, 2] = io_zz
 h_o = np.array([[0], [mass_box*g0], [0]])
 
-q_obj = [desiredInitialStateOfTipOfEndEffector_traj_1]
+"""
+(x(m), y(m), z(m), roll(rad), pitch(rad), yaw(rad)):
+Note: any modification to trajectory need modification of 'LABEL_1',
+function of 'ChooseRef' and of course the following trajecory definitions:
+
+Note: translational coordinations (x, y, z) are in world frame, so avoid values
+which are close to 'child_neck'.
+"""
+poseOfObjInWorld_y = .775 + length_box/2
+
+desiredInitialStateOfObj_traj_1 = np.array([0., poseOfObjInWorld_y, 0.202, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([0., .6, 0.202, 0., 0., np.pi/2])
+
+desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
+desiredFinalStateOfObj_traj_2 = np.array([0., poseOfObjInWorld_y, 0.202, 0., 0., np.pi/2])
+
+desiredInitialStateOfObj_traj_3 = desiredFinalStateOfObj_traj_2
+desiredFinalStateOfObj_traj_3 = desiredInitialStateOfObj_traj_1
+
+
+initPoseVelAccelOfObj_traj_1 = [desiredInitialStateOfObj_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+finalPoseVelAccelOfObj_traj_1 = [desiredFinalStateOfObj_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+
+initPoseVelAccelOfObj_traj_2 = [desiredInitialStateOfObj_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+finalPoseVelAccelOfObj_traj_2 = [desiredFinalStateOfObj_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+
+initPoseVelAccelOfObj_traj_3 = [desiredInitialStateOfObj_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+finalPoseVelAccelOfObj_traj_3 = [desiredFinalStateOfObj_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
+
+q_obj = [desiredInitialStateOfObj_traj_1]
 q = [[0.]*singleArmDof]
 q = np.hstack((q, q_obj))
 
@@ -93,22 +97,21 @@ loaded_model = rbdl.loadModel(pathToArmURDFModels + upperBodyModelFileName)
 
 ## create instances of publishers:
 pub_0 = rospy.Publisher('/arm/arm_zero_joint_effort_controller/command',
-                          Float64, queue_size=10)
+                        Float64, queue_size=10)
 pub_1 = rospy.Publisher('/arm/arm_one_joint_effort_controller/command',
-                          Float64, queue_size=10)
+                        Float64, queue_size=10)
 pub_2 = rospy.Publisher('/arm/arm_two_joint_effort_controller/command',
-                          Float64, queue_size=10)
+                        Float64, queue_size=10)
 pub_3 = rospy.Publisher('/arm/arm_three_joint_effort_controller/command',
-                          Float64, queue_size=10)
+                        Float64, queue_size=10)
 pub_4 = rospy.Publisher('/arm/arm_four_joint_effort_controller/command',
-                          Float64, queue_size=10)
+                        Float64, queue_size=10)
 pub_hand = rospy.Publisher('/arm/hand_joint_effort_controller/command',
-                            Float64, queue_size=10)
+                           Float64, queue_size=10)
 
 rospy.init_node('main_single_arm_node')
 
-
-def Traj_Estimate(qdd):
+def TrajEstimate(qdd):
     Dt = dt
     qdot_des_now = dqctrl_des_prev + Dt*qdd  # numerical derivation
     q_des_now = qctrl_des_prev + Dt*qdot_des_now
@@ -124,7 +127,7 @@ def Traj_Estimate(qdd):
     return np.array(q_des_now_filtered), qdot_des_now
 
 
-def traj_plan(t_start, t_end, z_start_o, z_end_o, traj_type='Quantic'):
+def TrajPlan(t_start, t_end, z_start_o, z_end_o, traj_type='Quantic'):
     """
     Compute desired generalize trajectory, velocity and acceleration ...
     of the Object.
@@ -192,6 +195,27 @@ def PubTorqueToGazebo(torqueVec):
     pub_hand.publish(torqueVec[5])  # hand
 
 
+def SkewSym(inputVector):
+    """Compute skew symetric matrix of 'inputList' vector."""
+    inputVector = np.array([inputVector])
+    zeroMat = np.zeros((3, 3))
+    zeroMat[0, 1] = -inputVector[0, 2]
+    zeroMat[0, 2] = inputVector[0, 1]
+    zeroMat[1, 2] = -inputVector[0, 0]
+    zeroMat = zeroMat + (-zeroMat.T)
+
+    return zeroMat  # (3*3)
+
+
+def CalcGoi(r_oi):
+
+    P_oi_cross = SkewSym(r_oi[:3])
+    G_oi_topRows = np.hstack((np.eye(3), P_oi_cross))
+    G_oi_bottomRows = np.hstack((np.zeros((3, 3)), np.eye(3)))
+    G_oi = np.vstack((G_oi_topRows, G_oi_bottomRows))  # (6*6)
+
+    return G_oi
+
 
 def CalcPoseErrorInQuaternion(desPose, currentPose, zDesQuater, zCurrentQuater):
     """Calculate position error in Quaternion based on the paper."""
@@ -204,6 +228,7 @@ def CalcPoseErrorInQuaternion(desPose, currentPose, zDesQuater, zCurrentQuater):
 
     angularError = np.dot(wCurrent, vDes) - np.dot(wDes, vCurrent) - \
                                             np.cross(vDes, vCurrent)
+    # print(np.round(angularError, 3))
 
     translationalError = desPose[:3] - currentPose[:3]
 
@@ -265,67 +290,120 @@ def CalcEulerGeneralizedAccel(angularPose, eulerVel, eulerAccel):
 
     alpha_z = ddRoll*np.cos(pitch) - dRoll*dPitch*np.sin(pitch) + ddYaw
 
-    desiredGeneralizedAccelOfEndEffector = \
-                np.concatenate((eulerAccel[:3], [alpha_x, alpha_y, alpha_z]))
+    desiredGeneralizedAccelOfObj = np.concatenate((eulerAccel[:3],
+                                                   [alpha_x, alpha_y, alpha_z]))
 
-    return desiredGeneralizedAccelOfEndEffector
+    return desiredGeneralizedAccelOfObj
 
 
 
-def CalcEulerGeneralizedVel(xEndEffector, xDotEndEffector):
+def CalcEulerGeneralizedVel(xObj, xDotObj):
     """
     Calculate conversion of Euler angles rate of change (dRoll, dPitch, dYaw)
     into angular velocity (omega_x, omega_y, omega_z):
     """
-    # roll = xEndEffector[3]
-    pitch = xEndEffector[4]
-    yaw = xEndEffector[5]
+    # roll = xObj[3]
+    pitch = xObj[4]
+    yaw = xObj[5]
 
     transformMat = np.array([[np.sin(pitch)*np.sin(yaw), np.cos(yaw), 0],
                              [np.sin(pitch)*np.cos(yaw), -np.sin(yaw), 0],
                              [np.cos(pitch), 0, 1]])
 
-    omegaVec = transformMat.dot(xDotEndEffector[3:])
+    omegaVec = transformMat.dot(xDotObj[3:])
 
-    desiredGeneralizedVelOfEndEffector = \
-                                np.concatenate((xDotEndEffector[:3], omegaVec))
+    desiredGeneralizedVelOfObj = np.concatenate((xDotObj[:3], omegaVec))
 
-    return desiredGeneralizedVelOfEndEffector
+    return desiredGeneralizedVelOfObj
+
+
+
+def QRDecompose(J_T):
+    m, n = J_T.shape
+
+    if m == 0 or n == 0:
+        raise TypeError(
+            'Try to calculate QR decomposition, while there is no contact!')
+
+    qr_Q, qr_R = qr(J_T)
+
+    qr_R = qr_R[:n, :]
+
+    return qr_Q, qr_R
+
+
+
+def InverseDynamic(model, qCurrent, qDotCurrent, qDDotDes):
+
+    jac = methods.Jacobian(loaded_model, qCurrent)
+    M = methods.CalcM(model, qCurrent)
+    h = methods.CalcH(model, qCurrent, qDotCurrent)
+    # print(np.round(h, 3), '\n')
+
+    MBar = M
+    hBar = h
+
+    MqDesH = MBar.dot(qDDotDes) + hBar
+    # print(np.round(MqDesH, 3), '\n')
+
+    S = np.eye(singleArmDof)
+
+    # J_g = jac  # equ(7)
+    # k, n = J_g.shape
+    # Q, R = QRDecompose(J_g.T)
+    # S_u = np.hstack((np.zeros((n - k, k)), np.eye(n - k)))  # below equ(11)
+    # P_QR = S_u.dot(Q.T)  # equ(11) = 0
+
+    # W_m_s = np.linalg.matrix_power(sqrtm(W_invDyn), -1)
+    # aux = pinv((S.T).dot(W_m_s))
+    # wInv = W_m_s.dot(aux)  # below equ(10)
+
+    # desiredTorque = wInv.dot(MqDesH).flatten()  # equ(10)
+
+    # return desiredTorque
+    return MqDesH
 
 
 
 def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
 
-    jac = methods.jc(loaded_model, qCurrent)
+    jac = methods.Jacobian(loaded_model, qCurrent)
     # print(np.round(jac.dot(qDotCurrent), 3))
     # print(np.round(methods.CalcGeneralizedVelOfObject(loaded_model, qCurrent, qDotCurrent), 3), '\n')
 
-    poseOfTipOfEndEffector = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
-    velOfTipOfEndEffector = \
-        methods.CalcGeneralizedVelOfObject(loaded_model, qCurrent, qDotCurrent)
-    velOfTipOfEndEffector = CalcEulerGeneralizedVel(poseOfTipOfEndEffector,
-                                                    velOfTipOfEndEffector)
+    poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
+    velOfObj = methods.CalcGeneralizedVelOfObject(loaded_model, qCurrent,
+                                                  qDotCurrent)
+    # print(np.round(poseDes[3:], 3))
+    # print(np.round(poseOfObj[3:], 3), '\n')
+
+    velOfObj = CalcEulerGeneralizedVel(poseOfObj, velOfObj)
 
 
-    zDesEndEffectorQuater = EulerToQuaternion(poseDes)
-    zCurrentEndEffectorQuater = EulerToQuaternion(poseOfTipOfEndEffector)
+    zDesObjInQuater = EulerToQuaternion(poseDes)
+    zCurrentObjInQuater = EulerToQuaternion(poseOfObj)
 
     poseErrorInQuater = CalcPoseErrorInQuaternion(poseDes,
-                                                  poseOfTipOfEndEffector,
-                                                  zDesEndEffectorQuater,
-                                                  zCurrentEndEffectorQuater)
+                                                  poseOfObj,
+                                                  zDesObjInQuater,
+                                                  zCurrentObjInQuater)
     # methods.WriteToCSV(poseErrorInQuater, time_,
     #                    ['a_x', 'a_y', 'a_z', 'a_r', 'a_p', 'a_ya'])
 
     ## control acceleration of end-effector in task-space: below equ(21)
-    accelDes = accelDes + kd_a * (velDes - velOfTipOfEndEffector) + \
-                          kp_a * poseErrorInQuater
+    accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * poseErrorInQuater
+    # accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * (poseDes - poseOfObj)
 
     dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
 
+    x_a = methods.pose_end(loaded_model, qCurrent)
+    r_o_a = poseOfObj[:3] - x_a
+
+    G_oa = CalcGoi(r_o_a)
+
     qDDotDes = pinv(jac).dot(accelDes - dJdq).flatten()  # equ(21)
 
-    qDes, qDotDes = Traj_Estimate(qDDotDes)
+    qDes, qDotDes = TrajEstimate(qDDotDes)
 
     return qDes, qDotDes, qDDotDes
 
@@ -392,25 +470,23 @@ def JointStatesCallback(data):
 
 
     xDes_t, xDotDes_t, xDDotDes_t, timePrime = ChooseRef(time_)
-    xDesEndEffector, xDotDesEndEffector, xDDotDesEndEffector = \
-                    CalcDesiredTraj(xDes_t, xDotDes_t, xDDotDes_t, timePrime)
+    xDesObj, xDotDesObj, xDDotDesObj = CalcDesiredTraj(xDes_t, xDotDes_t,
+                                                       xDDotDes_t, timePrime)
 
-    desiredGeneralizedVelOfEndEffector = \
-                    CalcEulerGeneralizedVel(xDesEndEffector, xDotDesEndEffector)
+    desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj)
 
-    desiredGeneralizedAccelOfEndEffector = \
-                                CalcEulerGeneralizedAccel(xDesEndEffector,
-                                                          xDotDesEndEffector,
-                                                          xDDotDesEndEffector)
+    desiredGeneralizedAccelOfObj = CalcEulerGeneralizedAccel(xDesObj,
+                                                             xDotDesObj,
+                                                             xDDotDesObj)
 
-    ## detemine desired states of robot in joint-space:
-    jointPose, jointVel, jointAccel = \
-                                Task2Joint(qCurrent, qDotCurrent, qDDotCurrent,
-                                           xDesEndEffector,
-                                           desiredGeneralizedVelOfEndEffector,
-                                           desiredGeneralizedAccelOfEndEffector)
+    ## detemine desired states of robot in joint-space: (qDDot_desired, ...)
+    jointPose, jointVel, jointAccel = Task2Joint(qCurrent, qDotCurrent,
+                                                 qDDotCurrent, xDesObj,
+                                                 desiredGeneralizedVelOfObj,
+                                                 desiredGeneralizedAccelOfObj)
 
-    jointTau = methods.InverseDynamic(loaded_model, jointPose, jointVel, jointAccel)
+    # jointTau = methods.InverseDynamic(loaded_model, jointPose, jointVel, jointAccel)
+    jointTau = InverseDynamic(loaded_model, qCurrent, qDotCurrent, jointAccel)
 
     PubTorqueToGazebo(jointTau)
 
@@ -434,15 +510,15 @@ if __name__ == '__main__':
     ## Generate desired states for the whole trajectory of object: (LABEL_1)
     ## First trajectory:
     desPose_traj_1, desVel_traj_1, desAccel_traj_1 = \
-        traj_plan(0, t_end/3, initPoseVelAccelOfTipOfEndEffector_traj_1, finalPoseVelAccelOfTipOfEndEffector_traj_1)
+        TrajPlan(0, t_end/3, initPoseVelAccelOfObj_traj_1, finalPoseVelAccelOfObj_traj_1)
 
     ## Second trajectory:
     desPose_traj_2, desVel_traj_2, desAccel_traj_2 = \
-        traj_plan(0, t_end/3, initPoseVelAccelOfTipOfEndEffector_traj_2, finalPoseVelAccelOfTipOfEndEffector_traj_2)
+        TrajPlan(0, t_end/3, initPoseVelAccelOfObj_traj_2, finalPoseVelAccelOfObj_traj_2)
 
     ## Third trajectory:
     desPose_traj_3, desVel_traj_3, desAccel_traj_3 = \
-        traj_plan(0, t_end/3, initPoseVelAccelOfTipOfEndEffector_traj_3, finalPoseVelAccelOfTipOfEndEffector_traj_3)
+        TrajPlan(0, t_end/3, initPoseVelAccelOfObj_traj_3, finalPoseVelAccelOfObj_traj_3)
 
     rlx = range(len(desPose_traj_1))  # range(0, 6) --> 0, 1, 2, 3, 4, 5
 
