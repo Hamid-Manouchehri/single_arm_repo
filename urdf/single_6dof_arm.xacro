@@ -204,6 +204,14 @@
       <kd value="1.0"/>
   </gazebo>
 
+  <gazebo reference="box">
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <material>Gazebo/Green</material>
+      <self_collide>1</self_collide>
+      <kp value="1000000.0"/>
+      <kd value="1.0"/>
+  </gazebo>
 
 
 
@@ -515,7 +523,7 @@
 
 
 
-  <!-- <joint name="box_to_hand" type="fixed">
+  <joint name="box_to_hand" type="fixed">
       <origin rpy="0 0 0" xyz="0 ${width_box/2 + width_arm/2} 0"/>
       <parent link="hand"/>
       <child link="box"/>
@@ -543,7 +551,7 @@
         	  iyy="${i_box_yy}" iyz="0.0"
         	  izz="${i_box_zz}"/>
       </inertial>
-  </link> -->
+  </link>
 
 
 
