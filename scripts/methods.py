@@ -32,19 +32,14 @@ def CalcM(model, q):
 
 
 
-def CalcH(model, dampingVec, q, qdot):
+def CalcH(model, dampingVec, q, qdot, qddot, M):
     """Compute centrifugal, coriolis and gravity force terms."""
     q = np.array(q, dtype=float)
     qdot = np.array(qdot, dtype=float)
     H = np.zeros(model.q_size)
 
     rbdl.InverseDynamics(model, q, qdot, np.zeros(model.qdot_size), H)  # (1*6)
-
-    # frictionVec = np.array([1, 1, 1, 1, 1, 10])
-    # frictionMatrix = np.diag(frictionVec)
-    
-    dampingMatrix = np.diag(dampingVec)
-    H = H - dampingMatrix.dot(qdot)# - frictionMatrix.dot(q)
+    H = H - M.dot(qddot)
 
     return H
 
@@ -92,8 +87,8 @@ def RotationMatToEuler(rotationMat):
 ####### Compute position of COM of the object:
 def GeneralizedPoseOfObj(model, q):
 
-    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
+    lengthOfBox = .25
+    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
 
     poseOfObj = rbdl.CalcBodyToBaseCoordinates(model, q,
                                                model.GetBodyId('hand'),
@@ -115,8 +110,8 @@ def Jacobian(model, q):
     workspaceDof = 6
     jc = np.zeros((workspaceDof, model.q_size))  # (6*6): due to whole 'model' and 'q' are imported.
 
-    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
+    lengthOfBox = .25
+    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
 
     rbdl.CalcPointJacobian6D(model, q, model.GetBodyId('hand'),
                              poseOfObjInHandFrame, jc)  # (6*6)
@@ -134,8 +129,8 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
     Calculate generalized velocity of the object via the right-hand ...
     kinematics in base frame.
     """
-    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
+    lengthOfBox = .25
+    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
 
     generalizedVelOfObj = rbdl.CalcPointVelocity6D(model, q, qdot,
                                                    model.GetBodyId('hand'),
@@ -153,8 +148,8 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
 def CalcdJdq(model, q, qdot, qddot):
     """Compute linear acceleration of a point on body."""
 
-    poseOfObjInHandFrame = np.asarray([.25/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.])
+    lengthOfBox = .25
+    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
 
     bodyAccel = rbdl.CalcPointAcceleration6D(model, q, qdot, qddot,
                                              model.GetBodyId('hand'),
