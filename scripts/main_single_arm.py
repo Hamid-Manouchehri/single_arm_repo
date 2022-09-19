@@ -32,11 +32,20 @@ finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite tim
 
 workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
-
-kp_a = 150
-kd_a = kp_a/10
-
 W_invDyn = np.eye(singleArmDof)
+
+kp_a = 100
+kd_a = kp_a/8
+
+## TODO: damping coefficients must be set similar to xacro model:
+dampingCoeff = np.array([0.]*singleArmDof)
+dampingCoeff[0] = .1  # arm_zero
+dampingCoeff[1] = 1  # arm_one
+dampingCoeff[2] = 1  # arm_two
+dampingCoeff[3] = 1  # arm_three
+dampingCoeff[4] = .1  # arm_four
+dampingCoeff[5] = .1  # hand
+
 
 # Object parameters:
 mass_box = .1  # TODO: Check the parameters of the box in the 'upper_body.xacro' file.
@@ -45,8 +54,8 @@ length_box = .25  # TODO
 io_zz = 1/12.*mass_box*(width_box**2 + length_box**2)
 
 M_o = np.eye(workspaceDof)*mass_box
-M_o[2, 2] = io_zz
-h_o = np.array([[0], [mass_box*g0], [0]])
+M_o[5, 5] = io_zz
+h_o = np.array([[0.], [mass_box*g0], [0.], [0.], [0.], [0.]])
 
 """
 (x(m), y(m), z(m), roll(rad), pitch(rad), yaw(rad)):
@@ -56,13 +65,15 @@ function of 'ChooseRef' and of course the following trajecory definitions:
 Note: translational coordinations (x, y, z) are in world frame, so avoid values
 which are close to 'child_neck'.
 """
-poseOfObjInWorld_y = .775 + length_box/2
+poseOfObjInWorld_x = 0.
+poseOfObjInWorld_y = .773 + length_box/2
+poseOfObjInWorld_z = .195
 
-desiredInitialStateOfObj_traj_1 = np.array([0., poseOfObjInWorld_y, 0.202, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([0., .6, 0.202, 0., 0., np.pi/2])
+desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, .6, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
-desiredFinalStateOfObj_traj_2 = np.array([0., poseOfObjInWorld_y, 0.202, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_2 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_3 = desiredFinalStateOfObj_traj_2
 desiredFinalStateOfObj_traj_3 = desiredInitialStateOfObj_traj_1
@@ -193,6 +204,30 @@ def PubTorqueToGazebo(torqueVec):
     pub_3.publish(torqueVec[3])  # arm_three
     pub_4.publish(torqueVec[4])  # arm_four
     pub_hand.publish(torqueVec[5])  # hand
+    # pub_hand.publish(-1.5)  # hand
+
+
+def GdotVDot_o(model, qCurrent, qDotCurrent, r_o_a):
+
+    poseOfObj = methods.GeneralizedPoseOfObj(model, qCurrent)
+    velOfObj = methods.CalcGeneralizedVelOfObject(model, qCurrent, qDotCurrent)
+    velOfObj = CalcEulerGeneralizedVel(poseOfObj, velOfObj)
+
+    ## Calculate Gdot_oi:
+    zeroMat = np.zeros([3, 3])
+    block1 = np.concatenate((zeroMat, zeroMat), 0)  # (6*3): vertical stack
+
+    omegaCrossRoaCrossOmega = \
+                        np.cross(velOfObj[3:], np.cross(r_o_a, velOfObj[3:]))
+
+    block2_a = SkewSym(np.array(omegaCrossRoaCrossOmega))  # (3*3)
+
+    block3_a = np.concatenate((block2_a, zeroMat), 0)  # (6*3): vertical stack
+    Gdot_oa = np.concatenate((block1, block3_a), 1)  # (6*6): horizontal stack
+
+    Gdot_oaV_o = Gdot_oa.dot(velOfObj)  # GDot_oa*qDot_o:(1*6)
+
+    return Gdot_oaV_o
 
 
 def SkewSym(inputVector):
@@ -279,14 +314,14 @@ def CalcEulerGeneralizedAccel(angularPose, eulerVel, eulerAccel):
 
     ## Time derivative of 'transformMat.objEulerVel':
     alpha_x = ddRoll*np.sin(pitch)*np.sin(yaw) + \
-        dRoll*dPitch*np.cos(pitch)*np.sin(yaw) + \
-        dRoll*dYaw*np.sin(pitch)*np.cos(yaw) + ddPitch*np.cos(yaw) - \
-        dPitch*dYaw*np.sin(yaw)
+              dRoll*dPitch*np.cos(pitch)*np.sin(yaw) + \
+              dRoll*dYaw*np.sin(pitch)*np.cos(yaw) + ddPitch*np.cos(yaw) - \
+              dPitch*dYaw*np.sin(yaw)
 
     alpha_y = ddRoll*np.sin(pitch)*np.cos(yaw) + \
-        dRoll*dPitch*np.cos(pitch)*np.cos(yaw) - \
-        dRoll*dYaw*np.sin(pitch)*np.sin(yaw) - ddPitch*np.sin(yaw) - \
-        dPitch*dYaw*np.cos(yaw)
+              dRoll*dPitch*np.cos(pitch)*np.cos(yaw) - \
+              dRoll*dYaw*np.sin(pitch)*np.sin(yaw) - ddPitch*np.sin(yaw) - \
+              dPitch*dYaw*np.cos(yaw)
 
     alpha_z = ddRoll*np.cos(pitch) - dRoll*dPitch*np.sin(pitch) + ddYaw
 
@@ -333,50 +368,57 @@ def QRDecompose(J_T):
 
 
 
-def InverseDynamic(model, qCurrent, qDotCurrent, qDDotDes):
+def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDes, qDotDes, qDDotDes):
 
     jac = methods.Jacobian(loaded_model, qCurrent)
-    M = methods.CalcM(model, qCurrent)
-    h = methods.CalcH(model, qCurrent, qDotCurrent)
-    # print(np.round(h, 3), '\n')
+    M = methods.CalcM(loaded_model, qCurrent)
+    h = methods.CalcH(loaded_model, dampingCoeff, qCurrent, qDotCurrent)
 
-    MBar = M
-    hBar = h
+
+
+    poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
+    x_a = methods.pose_end(loaded_model, qCurrent)
+    r_o_a = poseOfObj[:3] - x_a
+    G_oa = CalcGoi(r_o_a)  # (6*6)
+
+    dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)
+    aux = GdotVDot_o(loaded_model, qCurrent, qDotCurrent, r_o_a)
+
+    MBar = M + M_o.dot(inv(G_oa).dot(jac))
+    hBar = h + M_o.dot(inv(G_oa).dot(dJdq - aux))
 
     MqDesH = MBar.dot(qDDotDes) + hBar
-    # print(np.round(MqDesH, 3), '\n')
 
     S = np.eye(singleArmDof)
 
-    # J_g = jac  # equ(7)
-    # k, n = J_g.shape
-    # Q, R = QRDecompose(J_g.T)
-    # S_u = np.hstack((np.zeros((n - k, k)), np.eye(n - k)))  # below equ(11)
-    # P_QR = S_u.dot(Q.T)  # equ(11) = 0
+    J_g = jac - G_oa  # equ(7)
+    k, n = J_g.shape
+    Q, R = QRDecompose(J_g.T)
+    S_u = np.hstack((np.zeros((n - k, k)), np.eye(n - k)))  # below equ(11)
+    P_QR = S_u.dot(Q.T)  # equ(11) = 0
 
-    # W_m_s = np.linalg.matrix_power(sqrtm(W_invDyn), -1)
-    # aux = pinv((S.T).dot(W_m_s))
-    # wInv = W_m_s.dot(aux)  # below equ(10)
+    W_m_s = np.linalg.matrix_power(sqrtm(W_invDyn), -1)
+    aux = pinv(np.dot(P_QR, np.dot(S.T, W_m_s)))
+    wInv = np.dot(W_m_s, aux)  # equ(10)
+    # desiredTorque = wInv.dot(P_QR.dot(MqDesH)).flatten()  # equ(10)
 
-    # desiredTorque = wInv.dot(MqDesH).flatten()  # equ(10)
 
-    # return desiredTorque
-    return MqDesH
+
+    # tauPrime = -kd_tau * (qDotDes - qDotCurrent) - kp_tau * (qDes - qCurrent)
+    # desiredTorque = M.dot(tauPrime) + h
+
+    desiredTorque = M.dot(qDDotDes) + h
+
+    return desiredTorque
 
 
 
 def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
 
     jac = methods.Jacobian(loaded_model, qCurrent)
-    # print(np.round(jac.dot(qDotCurrent), 3))
-    # print(np.round(methods.CalcGeneralizedVelOfObject(loaded_model, qCurrent, qDotCurrent), 3), '\n')
-
     poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
     velOfObj = methods.CalcGeneralizedVelOfObject(loaded_model, qCurrent,
                                                   qDotCurrent)
-    # print(np.round(poseDes[3:], 3))
-    # print(np.round(poseOfObj[3:], 3), '\n')
-
     velOfObj = CalcEulerGeneralizedVel(poseOfObj, velOfObj)
 
 
@@ -387,19 +429,11 @@ def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
                                                   poseOfObj,
                                                   zDesObjInQuater,
                                                   zCurrentObjInQuater)
-    # methods.WriteToCSV(poseErrorInQuater, time_,
-    #                    ['a_x', 'a_y', 'a_z', 'a_r', 'a_p', 'a_ya'])
 
     ## control acceleration of end-effector in task-space: below equ(21)
     accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * poseErrorInQuater
-    # accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * (poseDes - poseOfObj)
 
     dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
-
-    x_a = methods.pose_end(loaded_model, qCurrent)
-    r_o_a = poseOfObj[:3] - x_a
-
-    G_oa = CalcGoi(r_o_a)
 
     qDDotDes = pinv(jac).dot(accelDes - dJdq).flatten()  # equ(21)
 
@@ -472,6 +506,7 @@ def JointStatesCallback(data):
     xDes_t, xDotDes_t, xDDotDes_t, timePrime = ChooseRef(time_)
     xDesObj, xDotDesObj, xDDotDesObj = CalcDesiredTraj(xDes_t, xDotDes_t,
                                                        xDDotDes_t, timePrime)
+    print(xDesObj)
 
     desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj)
 
@@ -486,11 +521,11 @@ def JointStatesCallback(data):
                                                  desiredGeneralizedAccelOfObj)
 
     # jointTau = methods.InverseDynamic(loaded_model, jointPose, jointVel, jointAccel)
-    jointTau = InverseDynamic(loaded_model, qCurrent, qDotCurrent, jointAccel)
+    jointTau = InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, jointPose,
+                              jointVel, jointAccel)
 
     PubTorqueToGazebo(jointTau)
 
-    # methods.WriteToCSV(jointTau, time_)
     time_ += dt
 
 

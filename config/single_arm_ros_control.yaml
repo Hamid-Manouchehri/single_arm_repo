@@ -6,29 +6,29 @@ arm:
   arm_zero_joint_effort_controller:
     type: effort_controllers/JointEffortController
     joint: arm_zero_to_child_neck
-    pid: {p: 50, i: .1, d: 0.01 }
+    pid: {p: 50, i: 1, d: 0.01 }
 
   arm_one_joint_effort_controller:
     type: effort_controllers/JointEffortController
     joint: arm_one_to_arm_zero
-    pid: {p: 50, i: .1, d: 0.01 }
+    pid: {p: 50, i: 1, d: 0.01 }
 
   arm_two_joint_effort_controller:
     type: effort_controllers/JointEffortController
     joint: arm_two_to_arm_one
-    pid: {p: 50, i: .1, d: 0.01 }
+    pid: {p: 50, i: 1, d: 0.01 }
 
   arm_three_joint_effort_controller:
     type: effort_controllers/JointEffortController
     joint: arm_three_to_arm_two
-    pid: {p: 50, i: .1, d: 0.01 }
+    pid: {p: 50, i: 1, d: 0.01 }
 
   arm_four_joint_effort_controller:
     type: effort_controllers/JointEffortController
     joint: arm_four_to_arm_three
-    pid: {p: 50, i: .1, d: 0.01 }
+    pid: {p: 50, i: 1, d: 0.01 }
 
   hand_joint_effort_controller:
     type: effort_controllers/JointEffortController
     joint: hand_to_arm_four
-    pid: {p: 50, i: .1, d: 0.01 }
+    pid: {p: 50, i: 1, d: 0.01 }
