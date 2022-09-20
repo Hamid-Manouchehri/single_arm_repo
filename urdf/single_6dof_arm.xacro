@@ -53,7 +53,7 @@
 
 
   <xacro:property name="damping_ratio_arm_zero" value="1" />
-  <xacro:property name="friction_ratio_arm_zero" value=".1" />
+  <xacro:property name="friction_ratio_arm_zero" value="1" />
 
   <xacro:property name="damping_ratio_arm_one" value="1" />
   <xacro:property name="friction_ratio_arm_one" value="1" />

@@ -26,7 +26,7 @@ import methods  # TODO: change the file name if necessary.
 
 time_ = 0
 dt = 0.01
-t_end = 5
+t_end = 6
 g0 = 9.81
 finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite time
 
@@ -34,12 +34,12 @@ workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 W_invDyn = np.eye(singleArmDof)
 
-kp_a = 100
-kd_a = kp_a/8
+kp_a = 110
+kd_a = kp_a/9
 
 ## TODO: damping coefficients must be set similar to xacro model:
 dampingCoeff = np.array([0.]*singleArmDof)
-dampingCoeff[0] = .1  # arm_zero
+dampingCoeff[0] = 1  # arm_zero
 dampingCoeff[1] = 1  # arm_one
 dampingCoeff[2] = 1  # arm_two
 dampingCoeff[3] = 1  # arm_three
@@ -63,7 +63,7 @@ Note: any modification to trajectory need modification of 'LABEL_1',
 function of 'ChooseRef' and of course the following trajecory definitions:
 
 Note: translational coordinations (x, y, z) are in world frame, so avoid values
-which are close to 'child_neck'.
+which are close to 'child_neck' frame.
 """
 poseOfObjInWorld_x = 0.
 poseOfObjInWorld_y = .773 + length_box/2
@@ -372,40 +372,7 @@ def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDes, qDotDes, qDDotDes)
 
     jac = methods.Jacobian(loaded_model, qCurrent)
     M = methods.CalcM(loaded_model, qCurrent)
-    h = methods.CalcH(loaded_model, dampingCoeff, qCurrent, qDotCurrent)
-
-
-
-    poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
-    x_a = methods.pose_end(loaded_model, qCurrent)
-    r_o_a = poseOfObj[:3] - x_a
-    G_oa = CalcGoi(r_o_a)  # (6*6)
-
-    dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)
-    aux = GdotVDot_o(loaded_model, qCurrent, qDotCurrent, r_o_a)
-
-    MBar = M + M_o.dot(inv(G_oa).dot(jac))
-    hBar = h + M_o.dot(inv(G_oa).dot(dJdq - aux))
-
-    MqDesH = MBar.dot(qDDotDes) + hBar
-
-    S = np.eye(singleArmDof)
-
-    J_g = jac - G_oa  # equ(7)
-    k, n = J_g.shape
-    Q, R = QRDecompose(J_g.T)
-    S_u = np.hstack((np.zeros((n - k, k)), np.eye(n - k)))  # below equ(11)
-    P_QR = S_u.dot(Q.T)  # equ(11) = 0
-
-    W_m_s = np.linalg.matrix_power(sqrtm(W_invDyn), -1)
-    aux = pinv(np.dot(P_QR, np.dot(S.T, W_m_s)))
-    wInv = np.dot(W_m_s, aux)  # equ(10)
-    # desiredTorque = wInv.dot(P_QR.dot(MqDesH)).flatten()  # equ(10)
-
-
-
-    # tauPrime = -kd_tau * (qDotDes - qDotCurrent) - kp_tau * (qDes - qCurrent)
-    # desiredTorque = M.dot(tauPrime) + h
+    h = methods.CalcH(loaded_model, dampingCoeff, qCurrent, qDotCurrent, qDDotCurrent, M)
 
     desiredTorque = M.dot(qDDotDes) + h
 
@@ -506,7 +473,6 @@ def JointStatesCallback(data):
     xDes_t, xDotDes_t, xDDotDes_t, timePrime = ChooseRef(time_)
     xDesObj, xDotDesObj, xDDotDesObj = CalcDesiredTraj(xDes_t, xDotDes_t,
                                                        xDDotDes_t, timePrime)
-    print(xDesObj)
 
     desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj)
 
