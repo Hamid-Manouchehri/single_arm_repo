@@ -22,7 +22,7 @@
   <xacro:property name="mass_arm_three" value=".5" />
   <xacro:property name="mass_arm_four" value=".5" />
   <xacro:property name="mass_hand" value="1" />
-  <xacro:property name="mass_box" value=".1" />
+  <xacro:property name="mass_box" value=".01" />
 
 
 
@@ -112,33 +112,8 @@
   <xacro:property name="i_box_zz" value="${mass_box/12*(width_box*width_box + length_box*length_box)}" />
 
 
-
-  <gazebo reference="trunk">
-      <mu1>0.9</mu1>
-      <mu2>0.9</mu2>
-      <material>Gazebo/White</material>
-  </gazebo>
-
   <gazebo reference="world">
       <static>true</static>
-  </gazebo>
-
-  <gazebo reference="trunk">
-      <mu1>0.9</mu1>
-      <mu2>0.9</mu2>
-      <material>Gazebo/DarkGrey</material>
-      <self_collide>1</self_collide>
-      <kp value="1000000.0"/>
-      <kd value="1.0"/>
-  </gazebo>
-
-  <gazebo reference="parent_neck">
-      <mu1>0.9</mu1>
-      <mu2>0.9</mu2>
-      <material>Gazebo/DarkGrey</material>
-      <self_collide>1</self_collide>
-      <kp value="1000000.0"/>
-      <kd value="1.0"/>
   </gazebo>
 
   <gazebo reference="child_neck">
@@ -217,74 +192,9 @@
 
   <link name="world"/>
 
-  <joint name="trunk_to_world" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 0"/>
-    <parent link="world"/>
-    <child link="trunk"/>
-  </joint>
-
-  <!-- Base Link -->
-  <link name="trunk">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-	       <box size="${width_trunk} ${length_trunk} ${height_trunk}"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
-	       <box size="${width_trunk} ${length_trunk} ${height_trunk}"/>
-      </geometry>
-      <material name="white"/>
-    </visual>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <mass value="${mass_trunk}"/>
-      <inertia
-        ixx="${i_trunk_xx}" ixy="0.0" ixz="0.0"
-    	  iyy="${i_trunk_yy}" iyz="0.0"
-    	  izz="${i_trunk_zz}"/>
-    </inertial>
-  </link>
-
-
-
-  <joint name="parent_neck_to_trunk" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0.08 ${height_trunk/2}"/>
-    <parent link="trunk"/>
-    <child link="parent_neck"/>
-  </joint>
-
-  <link name="parent_neck">
-    <collision>
-      <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck/2}"/>
-      <geometry>
-	       <box size="${width_parent_neck} ${length_parent_neck} ${height_parent_neck}"/>
-      </geometry>
-    </collision>
-    <visual>
-      <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck/2}"/>
-      <geometry>
-	       <box size="${width_parent_neck} ${length_parent_neck} ${height_parent_neck}"/>
-      </geometry>
-      <material name="white"/>
-    </visual>
-    <inertial>
-      <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck/2}"/>
-      <mass value="${mass_parent_neck}"/>
-      <inertia
-        ixx="${i_parent_neck_xx}" ixy="0.0" ixz="0.0"
-    	  iyy="${i_parent_neck_yy}" iyz="0.0"
-    	  izz="${i_parent_neck_zz}"/>
-    </inertial>
-  </link>
-
-
-
   <joint name="child_neck_to_parent_neck" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 ${height_parent_neck}"/>
-    <parent link="parent_neck"/>
+    <parent link="world"/>
     <child link="child_neck"/>
   </joint>
 

@@ -3,7 +3,8 @@ Author: Hamid Manouchehri
 co authors: Mohammad Shahbazi, Nooshin Koohli
 Year: 2022-2023
 '''
-
+import pylab as pl
+from math import pi
 import rbdl
 import numpy as np
 import csv
@@ -36,10 +37,10 @@ def CalcH(model, dampingVec, q, qdot, qddot, M):
     """Compute centrifugal, coriolis and gravity force terms."""
     q = np.array(q, dtype=float)
     qdot = np.array(qdot, dtype=float)
-    H = np.zeros(model.q_size)
+    tau = np.zeros(model.q_size)
 
-    rbdl.InverseDynamics(model, q, qdot, np.zeros(model.qdot_size), H)  # (1*6)
-    H = H - M.dot(qddot)
+    rbdl.InverseDynamics(model, q, qdot, np.zeros(model.qdot_size), tau)  # (1*6)
+    H = tau - M.dot(qddot)
 
     return H
 
@@ -83,12 +84,75 @@ def RotationMatToEuler(rotationMat):
     return thetaVec  # in radians
 
 
+def rotationToVtk(R):
+    '''
+    Concert a rotation matrix into the Mayavi/Vtk rotation paramaters (pitch, roll, yaw)
+    '''
+    def euler_from_matrix(matrix):
+        """Return Euler angles (syxz) from rotation matrix for specified axis sequence.
+        :Author:
+          `Christoph Gohlke <http://www.lfd.uci.edu/~gohlke/>`_
+
+        full library with coplete set of euler triplets (combinations of  s/r x-y-z) at
+            http://www.lfd.uci.edu/~gohlke/code/transformations.py.html
+
+        Note that many Euler angle triplets can describe one matrix.
+        """
+        # epsilon for testing whether a number is close to zero
+        _EPS = np.finfo(float).eps * 5.0
+
+        # axis sequences for Euler angles
+        _NEXT_AXIS = [1, 2, 0, 1]
+        firstaxis, parity, repetition, frame = (1, 1, 0, 0) # ''
+
+        i = firstaxis
+        j = _NEXT_AXIS[i+parity]
+        k = _NEXT_AXIS[i-parity+1]
+
+        M = np.array(matrix, dtype='float', copy=False)[:3, :3]
+        if repetition:
+            sy = np.sqrt(M[i, j]*M[i, j] + M[i, k]*M[i, k])
+            if sy > _EPS:
+                ax = np.arctan2( M[i, j],  M[i, k])
+                ay = np.arctan2( sy,       M[i, i])
+                az = np.arctan2( M[j, i], -M[k, i])
+            else:
+                ax = np.arctan2(-M[j, k],  M[j, j])
+                ay = np.arctan2( sy,       M[i, i])
+                az = 0.0
+        else:
+            cy = np.sqrt(M[i, i]*M[i, i] + M[j, i]*M[j, i])
+            if cy > _EPS:
+                ax = np.arctan2( M[k, j],  M[k, k])
+                ay = np.arctan2(-M[k, i],  cy)
+                az = np.arctan2( M[j, i],  M[i, i])
+            else:
+                ax = np.arctan2(-M[j, k],  M[j, j])
+                ay = np.arctan2(-M[k, i],  cy)
+                az = 0.0
+
+        if parity:
+            ax, ay, az = -ax, -ay, -az
+        if frame:
+            ax, az = az, ax
+        return ax, ay, az
+    # r_yxz = pl.array(euler_from_matrix(R))*180/pi
+    r_yxz = pl.array(euler_from_matrix(R))
+    r_xyz = r_yxz[[1, 0, 2]]
+    # r_xyz = -r_yxz[[1, 0, 2]]
+    return r_xyz
+
+
+
+
 
 ####### Compute position of COM of the object:
 def GeneralizedPoseOfObj(model, q):
 
     lengthOfBox = .25
     poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    # poseOfObjInHandFrame = np.asarray([0., 0., 0.])
+    print(model.GetBodyId('hand'))
 
     poseOfObj = rbdl.CalcBodyToBaseCoordinates(model, q,
                                                model.GetBodyId('hand'),
@@ -98,6 +162,9 @@ def GeneralizedPoseOfObj(model, q):
                                                      model.GetBodyId('hand'))
 
     orientationOfBox = RotationMatToEuler(rotationMatOfBox)
+    # orientationOfBox = rotationToVtk(rotationMatOfBox)
+    # print(orientationOfBox)
+    print(rotationMatOfBox.dot(poseOfObjInHandFrame))
 
     generalizedPoseOfEndEffector = np.concatenate((poseOfObj, orientationOfBox))
 
@@ -112,6 +179,7 @@ def Jacobian(model, q):
 
     lengthOfBox = .25
     poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
 
     rbdl.CalcPointJacobian6D(model, q, model.GetBodyId('hand'),
                              poseOfObjInHandFrame, jc)  # (6*6)
@@ -131,6 +199,7 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
     """
     lengthOfBox = .25
     poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
 
     generalizedVelOfObj = rbdl.CalcPointVelocity6D(model, q, qdot,
                                                    model.GetBodyId('hand'),
@@ -150,6 +219,7 @@ def CalcdJdq(model, q, qdot, qddot):
 
     lengthOfBox = .25
     poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
 
     bodyAccel = rbdl.CalcPointAcceleration6D(model, q, qdot, qddot,
                                              model.GetBodyId('hand'),

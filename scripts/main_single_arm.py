@@ -26,7 +26,7 @@ import methods  # TODO: change the file name if necessary.
 
 time_ = 0
 dt = 0.01
-t_end = 6
+t_end = 60
 g0 = 9.81
 finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite time
 
@@ -37,17 +37,25 @@ W_invDyn = np.eye(singleArmDof)
 kp_a = 110
 kd_a = kp_a/9
 
-## TODO: damping coefficients must be set similar to xacro model:
+## TODO: damping and friction coefficients must be set similar to xacro model:
 dampingCoeff = np.array([0.]*singleArmDof)
 dampingCoeff[0] = 1  # arm_zero
 dampingCoeff[1] = 1  # arm_one
 dampingCoeff[2] = 1  # arm_two
 dampingCoeff[3] = 1  # arm_three
-dampingCoeff[4] = .1  # arm_four
-dampingCoeff[5] = .1  # hand
+dampingCoeff[4] = 1  # arm_four
+dampingCoeff[5] = 1  # hand
+
+frictionCoeff = np.array([0.]*singleArmDof)
+frictionCoeff[0] = 1  # arm_zero
+frictionCoeff[1] = 1  # arm_one
+frictionCoeff[2] = 1  # arm_two
+frictionCoeff[3] = 1  # arm_three
+frictionCoeff[4] = .1  # arm_four
+frictionCoeff[5] = .1  # hand
 
 
-# Object parameters:
+## Object parameters:
 mass_box = .1  # TODO: Check the parameters of the box in the 'upper_body.xacro' file.
 width_box = .4  # TODO
 length_box = .25  # TODO
@@ -70,7 +78,7 @@ poseOfObjInWorld_y = .773 + length_box/2
 poseOfObjInWorld_z = .195
 
 desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, .6, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
 desiredFinalStateOfObj_traj_2 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
@@ -204,7 +212,6 @@ def PubTorqueToGazebo(torqueVec):
     pub_3.publish(torqueVec[3])  # arm_three
     pub_4.publish(torqueVec[4])  # arm_four
     pub_hand.publish(torqueVec[5])  # hand
-    # pub_hand.publish(-1.5)  # hand
 
 
 def GdotVDot_o(model, qCurrent, qDotCurrent, r_o_a):
@@ -370,9 +377,11 @@ def QRDecompose(J_T):
 
 def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDes, qDotDes, qDDotDes):
 
-    jac = methods.Jacobian(loaded_model, qCurrent)
     M = methods.CalcM(loaded_model, qCurrent)
     h = methods.CalcH(loaded_model, dampingCoeff, qCurrent, qDotCurrent, qDDotCurrent, M)
+    # print(np.round(h, 4))
+    # print(np.round(np.diag(frictionCoeff).dot(qDotCurrent) + np.diag(dampingCoeff).dot(qCurrent), 4), '\n')
+
 
     desiredTorque = M.dot(qDDotDes) + h
 
@@ -399,6 +408,8 @@ def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
 
     ## control acceleration of end-effector in task-space: below equ(21)
     accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * poseErrorInQuater
+    # accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * (poseDes - poseOfObj)
+    # print(poseDes - poseOfObj)
 
     dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
 
@@ -490,6 +501,7 @@ def JointStatesCallback(data):
     jointTau = InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, jointPose,
                               jointVel, jointAccel)
 
+    # print(jointTau)
     PubTorqueToGazebo(jointTau)
 
     time_ += dt
