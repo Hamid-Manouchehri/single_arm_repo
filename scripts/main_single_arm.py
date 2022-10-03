@@ -497,10 +497,10 @@ def JointStatesCallback(data):
 def RemoveCSVFile(path, fileName):
     """Remove the csv file to avoid appending data to the preivous data."""
     if os.path.isfile(path + fileName) is True:
-        os.remove(path + fidesired
+        os.remove(path + fileName)
 
     else:
-        pass  the object.
+        pass
 
 
 if __name__ == '__main__':
