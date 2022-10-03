@@ -136,13 +136,123 @@ def rotationToVtk(R):
         if frame:
             ax, az = az, ax
         return ax, ay, az
-    # r_yxz = pl.array(euler_from_matrix(R))*180/pi
-    r_yxz = pl.array(euler_from_matrix(R))
-    r_xyz = r_yxz[[1, 0, 2]]
-    # r_xyz = -r_yxz[[1, 0, 2]]
+    r_yxz = pl.array(euler_from_matrix(R))*180/pi
+    # r_yxz = pl.array(euler_from_matrix(R))
+    # r_xyz = r_yxz[[1, 0, 2]]
+    r_xyz = -r_yxz[[1, 0, 2]]
     return r_xyz
 
 
+
+def rotation_angles(matrix, order):
+    """
+    input
+        matrix = 3x3 rotation matrix (numpy array)
+        oreder(str) = rotation order of x, y, z : e.g, rotation XZY -- 'xzy'
+    output
+        theta1, theta2, theta3 = rotation angles in rotation order
+    """
+    r11, r12, r13 = matrix[0]
+    r21, r22, r23 = matrix[1]
+    r31, r32, r33 = matrix[2]
+
+    if order == 'xzx':
+        theta1 = np.arctan(r31 / r21)
+        theta2 = np.arctan(r21 / (r11 * np.cos(theta1)))
+        theta3 = np.arctan(-r13 / r12)
+
+    elif order == 'xyx':
+        theta1 = np.arctan(-r21 / r31)
+        theta2 = np.arctan(-r31 / (r11 *np.cos(theta1)))
+        theta3 = np.arctan(r12 / r13)
+
+    elif order == 'yxy':
+        theta1 = np.arctan(r12 / r32)
+        theta2 = np.arctan(r32 / (r22 *np.cos(theta1)))
+        theta3 = np.arctan(-r21 / r23)
+
+    elif order == 'yzy':
+        theta1 = np.arctan(-r32 / r12)
+        theta2 = np.arctan(-r12 / (r22 *np.cos(theta1)))
+        theta3 = np.arctan(r23 / r21)
+
+    elif order == 'zyz':
+        theta1 = np.arctan(r23 / r13)
+        theta2 = np.arctan(r13 / (r33 *np.cos(theta1)))
+        theta3 = np.arctan(-r32 / r31)
+
+    elif order == 'zxz':
+        theta1 = np.arctan(-r13 / r23)
+        theta2 = np.arctan(-r23 / (r33 *np.cos(theta1)))
+        theta3 = np.arctan(r31 / r32)
+
+    elif order == 'xzy':
+        theta1 = np.arctan(r32 / r22)
+        theta2 = np.arctan(-r12 * np.cos(theta1) / r22)
+        theta3 = np.arctan(r13 / r11)
+
+    elif order == 'xyz':
+        theta1 = np.arctan(-r23 / r33)
+        theta2 = np.arctan(r13 * np.cos(theta1) / r33)
+        theta3 = np.arctan(-r12 / r11)
+
+    elif order == 'yxz':
+        theta1 = np.arctan(r13 / r33)
+        theta2 = np.arctan(-r23 * np.cos(theta1) / r33)
+        theta3 = np.arctan(r21 / r22)
+
+    elif order == 'yzx':
+        theta1 = np.arctan(-r31 / r11)
+        theta2 = np.arctan(r21 * np.cos(theta1) / r11)
+        theta3 = np.arctan(-r23 / r22)
+
+    elif order == 'zyx':
+        theta1 = np.arctan(r21 / r11)
+        theta2 = np.arctan(-r31 * np.cos(theta1) / r11)
+        theta3 = np.arctan(r32 / r33)
+
+    elif order == 'zxy':
+        theta1 = np.arctan(-r12 / r22)
+        theta2 = np.arctan(r32 * np.cos(theta1) / r22)
+        theta3 = np.arctan(-r31 / r33)
+
+    theta1 = theta1 * 180 / np.pi
+    theta2 = theta2 * 180 / np.pi
+    theta3 = theta3 * 180 / np.pi
+
+    return (theta1, theta2, theta3)
+
+
+def RotationToEuler(q):
+
+    R_0_W = np.array([[1, 0, 0],
+                      [0, np.cos(q[0]), -np.sin(q[0])],
+                      [0, np.sin(q[0]), np.cos(q[0])]])
+
+    R_1_0 = np.array([[np.cos(q[1]), -np.sin(q[1]), 0],
+                      [np.sin(q[1]), np.cos(q[1]), 0],
+                      [0, 0, 1]])
+
+    R_2_1 = np.array([[np.cos(q[2]), -np.sin(q[2]), 0],
+                      [np.sin(q[2]), np.cos(q[2]), 0],
+                      [0, 0, 1]])
+
+    R_3_2 = np.array([[1, 0, 0],
+                      [0, np.cos(q[3]), -np.sin(q[3])],
+                      [0, np.sin(q[3]), np.cos(q[3])]])
+
+    R_4_3 = np.array([[np.cos(q[4]), -np.sin(q[4]), 0],
+                      [np.sin(q[4]), np.cos(q[4]), 0],
+                      [0, 0, 1]])
+
+    R_h_4 = np.array([[np.cos(q[5]), -np.sin(q[5]), 0],
+                      [np.sin(q[5]), np.cos(q[5]), 0],
+                      [0, 0, 1]])
+
+    R_h_W = R_0_W.dot(R_1_0.dot(R_2_1.dot(R_3_2.dot(R_4_3.dot(R_h_4)))))
+    eulerAngles = RotationMatToEuler(R_h_W)
+
+    return eulerAngles
 
 
 
@@ -152,7 +262,6 @@ def GeneralizedPoseOfObj(model, q):
     lengthOfBox = .25
     poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
     # poseOfObjInHandFrame = np.asarray([0., 0., 0.])
-    print(model.GetBodyId('hand'))
 
     poseOfObj = rbdl.CalcBodyToBaseCoordinates(model, q,
                                                model.GetBodyId('hand'),
@@ -162,9 +271,17 @@ def GeneralizedPoseOfObj(model, q):
                                                      model.GetBodyId('hand'))
 
     orientationOfBox = RotationMatToEuler(rotationMatOfBox)
-    # orientationOfBox = rotationToVtk(rotationMatOfBox)
-    # print(orientationOfBox)
-    print(rotationMatOfBox.dot(poseOfObjInHandFrame))
+    # kir = rotationToVtk(rotationMatOfBox)
+    # print(kir)
+    # kir = rotation_angles(rotationMatOfBox, 'zxy')
+
+    # q[1] = q[1] + pi/3
+    # q[2] = q[2] + pi/3
+    # q[5] = q[5] - pi/6
+
+    kir = rbdl.CalcBodyWorldOrientation(model, q, model.GetBodyId('arm_three'))
+    kirekhar = RotationMatToEuler(kir)
+    # print(kirekhar)
 
     generalizedPoseOfEndEffector = np.concatenate((poseOfObj, orientationOfBox))
 

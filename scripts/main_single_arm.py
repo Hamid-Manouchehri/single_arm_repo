@@ -26,7 +26,7 @@ import methods  # TODO: change the file name if necessary.
 
 time_ = 0
 dt = 0.01
-t_end = 60
+t_end = 5
 g0 = 9.81
 finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite time
 
@@ -34,28 +34,25 @@ workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 W_invDyn = np.eye(singleArmDof)
 
-kp_a = 110
-kd_a = kp_a/9
+kp_a = np.array([[330, 0, 0, 0, 0, 0],
+                 [0, 330, 0, 0, 0, 0],
+                 [0, 0, 330, 0, 0, 0],
+                 [0, 0, 0, 500, 0, 0],
+                 [0, 0, 0, 0, 330, 0],
+                 [0, 0, 0, 0, 0, 500]])
+kd_a = kp_a/12
 
-## TODO: damping and friction coefficients must be set similar to xacro model:
+## TODO: damping coefficients must be set similar to xacro model:
 dampingCoeff = np.array([0.]*singleArmDof)
 dampingCoeff[0] = 1  # arm_zero
 dampingCoeff[1] = 1  # arm_one
 dampingCoeff[2] = 1  # arm_two
 dampingCoeff[3] = 1  # arm_three
-dampingCoeff[4] = 1  # arm_four
-dampingCoeff[5] = 1  # hand
-
-frictionCoeff = np.array([0.]*singleArmDof)
-frictionCoeff[0] = 1  # arm_zero
-frictionCoeff[1] = 1  # arm_one
-frictionCoeff[2] = 1  # arm_two
-frictionCoeff[3] = 1  # arm_three
-frictionCoeff[4] = .1  # arm_four
-frictionCoeff[5] = .1  # hand
+dampingCoeff[4] = .1  # arm_four
+dampingCoeff[5] = .1  # hand
 
 
-## Object parameters:
+# Object parameters:
 mass_box = .1  # TODO: Check the parameters of the box in the 'upper_body.xacro' file.
 width_box = .4  # TODO
 length_box = .25  # TODO
@@ -77,14 +74,15 @@ poseOfObjInWorld_x = 0.
 poseOfObjInWorld_y = .773 + length_box/2
 poseOfObjInWorld_z = .195
 
+
+## Path attribures:
+numOfTraj = 2
+
 desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([.3, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
-desiredFinalStateOfObj_traj_2 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-
-desiredInitialStateOfObj_traj_3 = desiredFinalStateOfObj_traj_2
-desiredFinalStateOfObj_traj_3 = desiredInitialStateOfObj_traj_1
+desiredFinalStateOfObj_traj_2 = desiredInitialStateOfObj_traj_1
 
 
 initPoseVelAccelOfObj_traj_1 = [desiredInitialStateOfObj_traj_1, np.zeros(workspaceDof), np.zeros(workspaceDof)]
@@ -93,8 +91,6 @@ finalPoseVelAccelOfObj_traj_1 = [desiredFinalStateOfObj_traj_1, np.zeros(workspa
 initPoseVelAccelOfObj_traj_2 = [desiredInitialStateOfObj_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
 finalPoseVelAccelOfObj_traj_2 = [desiredFinalStateOfObj_traj_2, np.zeros(workspaceDof), np.zeros(workspaceDof)]
 
-initPoseVelAccelOfObj_traj_3 = [desiredInitialStateOfObj_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
-finalPoseVelAccelOfObj_traj_3 = [desiredFinalStateOfObj_traj_3, np.zeros(workspaceDof), np.zeros(workspaceDof)]
 
 q_obj = [desiredInitialStateOfObj_traj_1]
 q = [[0.]*singleArmDof]
@@ -270,13 +266,12 @@ def CalcPoseErrorInQuaternion(desPose, currentPose, zDesQuater, zCurrentQuater):
 
     angularError = np.dot(wCurrent, vDes) - np.dot(wDes, vCurrent) - \
                                             np.cross(vDes, vCurrent)
-    # print(np.round(angularError, 3))
 
     translationalError = desPose[:3] - currentPose[:3]
 
     generalizedError = np.concatenate((translationalError, angularError))
 
-    return generalizedError
+    return generalizedError  # (1*6)
 
 
 
@@ -377,11 +372,9 @@ def QRDecompose(J_T):
 
 def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDes, qDotDes, qDDotDes):
 
+    jac = methods.Jacobian(loaded_model, qCurrent)
     M = methods.CalcM(loaded_model, qCurrent)
     h = methods.CalcH(loaded_model, dampingCoeff, qCurrent, qDotCurrent, qDDotCurrent, M)
-    # print(np.round(h, 4))
-    # print(np.round(np.diag(frictionCoeff).dot(qDotCurrent) + np.diag(dampingCoeff).dot(qCurrent), 4), '\n')
-
 
     desiredTorque = M.dot(qDDotDes) + h
 
@@ -406,10 +399,8 @@ def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
                                                   zDesObjInQuater,
                                                   zCurrentObjInQuater)
 
-    ## control acceleration of end-effector in task-space: below equ(21)
-    accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * poseErrorInQuater
-    # accelDes = accelDes + kd_a * (velDes - velOfObj) + kp_a * (poseDes - poseOfObj)
-    # print(poseDes - poseOfObj)
+    ## desired acceleration of the object in task-space: below equ(21)
+    accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseErrorInQuater)
 
     dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
 
@@ -432,14 +423,11 @@ def CalcDesiredTraj(xDes, xDotDes, xDDotDes, t):
 
 
 def ChooseRef(time):
-    if time <= t_end/3:
+    if time <= t_end/numOfTraj:
         out = [desPose_traj_1, desVel_traj_1, desAccel_traj_1, time]
 
-    elif time <= 2*t_end/3:
-        out = [desPose_traj_2, desVel_traj_2, desAccel_traj_2, time - t_end/3]
-
     else:
-        out = [desPose_traj_3, desVel_traj_3, desAccel_traj_3, time - 2*t_end/3]
+        out = [desPose_traj_2, desVel_traj_2, desAccel_traj_2, time - t_end/numOfTraj]
 
     return out
 
@@ -501,7 +489,6 @@ def JointStatesCallback(data):
     jointTau = InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, jointPose,
                               jointVel, jointAccel)
 
-    # print(jointTau)
     PubTorqueToGazebo(jointTau)
 
     time_ += dt
@@ -510,10 +497,10 @@ def JointStatesCallback(data):
 def RemoveCSVFile(path, fileName):
     """Remove the csv file to avoid appending data to the preivous data."""
     if os.path.isfile(path + fileName) is True:
-        os.remove(path + fileName)
+        os.remove(path + fidesired
 
     else:
-        pass  # Do nothing.
+        pass  the object.
 
 
 if __name__ == '__main__':
@@ -523,15 +510,12 @@ if __name__ == '__main__':
     ## Generate desired states for the whole trajectory of object: (LABEL_1)
     ## First trajectory:
     desPose_traj_1, desVel_traj_1, desAccel_traj_1 = \
-        TrajPlan(0, t_end/3, initPoseVelAccelOfObj_traj_1, finalPoseVelAccelOfObj_traj_1)
+        TrajPlan(0, t_end/numOfTraj, initPoseVelAccelOfObj_traj_1, finalPoseVelAccelOfObj_traj_1)
 
     ## Second trajectory:
     desPose_traj_2, desVel_traj_2, desAccel_traj_2 = \
-        TrajPlan(0, t_end/3, initPoseVelAccelOfObj_traj_2, finalPoseVelAccelOfObj_traj_2)
+        TrajPlan(0, t_end/numOfTraj, initPoseVelAccelOfObj_traj_2, finalPoseVelAccelOfObj_traj_2)
 
-    ## Third trajectory:
-    desPose_traj_3, desVel_traj_3, desAccel_traj_3 = \
-        TrajPlan(0, t_end/3, initPoseVelAccelOfObj_traj_3, finalPoseVelAccelOfObj_traj_3)
 
     rlx = range(len(desPose_traj_1))  # range(0, 6) --> 0, 1, 2, 3, 4, 5
 

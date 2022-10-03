@@ -21,8 +21,8 @@
   <xacro:property name="mass_arm_two" value=".5" />
   <xacro:property name="mass_arm_three" value=".5" />
   <xacro:property name="mass_arm_four" value=".5" />
-  <xacro:property name="mass_hand" value="1" />
-  <xacro:property name="mass_box" value=".01" />
+  <xacro:property name="mass_hand" value=".1" />
+  <xacro:property name="mass_box" value="1" />
 
 
 
@@ -62,7 +62,7 @@
   <xacro:property name="friction_ratio_arm_two" value="1" />
 
   <xacro:property name="damping_ratio_arm_three" value="1" />
-  <xacro:property name="friction_ratio_arm_three" value="1" />
+  <xacro:property name="friction_ratio_arm_three" value="5" />
 
   <xacro:property name="damping_ratio_arm_four" value="1" />
   <xacro:property name="friction_ratio_arm_four" value=".1" />
@@ -225,7 +225,7 @@
 
   <joint name="arm_zero_to_child_neck" type="revolute">
     <axis xyz="1 0 0"/>
-    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <limit effort="50" lower="-6.28" upper="6.28" velocity="4"/>
     <origin rpy="0 0 0" xyz="${width_child_neck/2} 0 ${height_child_neck/2}"/>
     <parent link="child_neck"/>
     <child link="arm_zero"/>
@@ -260,7 +260,7 @@
 
   <joint name="arm_one_to_arm_zero" type="revolute">
     <axis xyz="0 0 1"/>
-    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <limit effort="50" lower="-6.28" upper="6.28" velocity="4"/>
     <origin rpy="0 0 ${PI/3}" xyz="${width_arm} 0 0"/>  <!-- in parent link frame -->
     <parent link="arm_zero"/>
     <child link="arm_one"/>
@@ -295,7 +295,7 @@
 
   <joint name="arm_two_to_arm_one" type="revolute">
     <axis xyz="0 0 1"/>
-    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <limit effort="50" lower="-6.28" upper="6.28" velocity="4"/>
     <origin rpy="0 0 ${PI/3}" xyz="${length_arm_one} 0 0"/>
     <parent link="arm_one"/>
     <child link="arm_two"/>
@@ -330,7 +330,7 @@
 
   <joint name="arm_three_to_arm_two" type="revolute">
     <axis xyz="1 0 0"/>
-    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <limit effort="50" lower="-6.28" upper="6.28" velocity="4"/>
     <origin rpy="0 0 0" xyz="${length_arm_two} 0 0"/>
     <parent link="arm_two"/>
     <child link="arm_three"/>
@@ -365,7 +365,7 @@
 
   <joint name="arm_four_to_arm_three" type="revolute">
     <axis xyz="0 0 1"/>
-    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <limit effort="50" lower="-6.28" upper="6.28" velocity="4"/>
     <origin rpy="0 0 0" xyz="${length_arm_three} 0 0"/>
     <parent link="arm_three"/>
     <child link="arm_four"/>
@@ -400,7 +400,7 @@
 
   <joint name="hand_to_arm_four" type="revolute">
     <axis xyz="0 0 1"/>
-    <limit effort="50" lower="-3.14" upper="3.14" velocity="4"/>
+    <limit effort="50" lower="-6.28" upper="6.28" velocity="4"/>
     <origin rpy="0 0 ${-PI/6}" xyz="${length_arm_four} 0 0"/>
     <parent link="arm_four"/>
     <child link="hand"/>
