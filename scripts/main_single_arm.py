@@ -34,12 +34,24 @@ workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 W_invDyn = np.eye(singleArmDof)
 
+# k_p = 20
+# k_o = 20
+
+k_p = np.array([[10, 0, 0],
+                [0, 10, 0],
+                [0, 0, 10]])
+
+k_o = np.array([[10, 0, 0],
+                [0, 10, 0],
+                [0, 0, 10]])
+
+
 kp_a = np.array([[330, 0, 0, 0, 0, 0],
                  [0, 330, 0, 0, 0, 0],
                  [0, 0, 330, 0, 0, 0],
                  [0, 0, 0, 500, 0, 0],
                  [0, 0, 0, 0, 330, 0],
-                 [0, 0, 0, 0, 0, 500]])
+                 [0, 0, 0, 0, 0, 600]])
 kd_a = kp_a/12
 
 ## TODO: damping coefficients must be set similar to xacro model:
@@ -48,8 +60,8 @@ dampingCoeff[0] = 1  # arm_zero
 dampingCoeff[1] = 1  # arm_one
 dampingCoeff[2] = 1  # arm_two
 dampingCoeff[3] = 1  # arm_three
-dampingCoeff[4] = .1  # arm_four
-dampingCoeff[5] = .1  # hand
+dampingCoeff[4] = 1  # arm_four
+dampingCoeff[5] = 1  # hand
 
 
 # Object parameters:
@@ -79,7 +91,7 @@ poseOfObjInWorld_z = .195
 numOfTraj = 2
 
 desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([.3, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([.2, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
 desiredFinalStateOfObj_traj_2 = desiredInitialStateOfObj_traj_1
@@ -334,22 +346,36 @@ def CalcEulerGeneralizedAccel(angularPose, eulerVel, eulerAccel):
 
 
 
-def CalcEulerGeneralizedVel(xObj, xDotObj):
+def CalcEulerGeneralizedVel(xObjDes, xDotObjDes, qCurrent):
     """
     Calculate conversion of Euler angles rate of change (dRoll, dPitch, dYaw)
     into angular velocity (omega_x, omega_y, omega_z):
     """
-    # roll = xObj[3]
-    pitch = xObj[4]
-    yaw = xObj[5]
+    # roll = xObjDes[3]
+    pitch = xObjDes[4]
+    yaw = xObjDes[5]
+
+    poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
+
+    translationalVelOfObjRef = xDotObjDes[:3] + k_p.dot((xObjDes[:3] - poseOfObj[:3]))
+
+    zDesObjInQuater = EulerToQuaternion(xObjDes)
+    zCurrentObjInQuater = EulerToQuaternion(poseOfObj)
+
+    poseErrorInQuater = CalcPoseErrorInQuaternion(xObjDes,
+                                                  poseOfObj,
+                                                  zDesObjInQuater,
+                                                  zCurrentObjInQuater)
 
     transformMat = np.array([[np.sin(pitch)*np.sin(yaw), np.cos(yaw), 0],
                              [np.sin(pitch)*np.cos(yaw), -np.sin(yaw), 0],
                              [np.cos(pitch), 0, 1]])
 
-    omegaVec = transformMat.dot(xDotObj[3:])
+    omegaVec = transformMat.dot(xDotObjDes[3:])  # (1*3)
 
-    desiredGeneralizedVelOfObj = np.concatenate((xDotObj[:3], omegaVec))
+    omegaRef = omegaVec + k_o.dot(poseErrorInQuater[3:])
+
+    desiredGeneralizedVelOfObj = np.concatenate((translationalVelOfObjRef, omegaVec))
 
     return desiredGeneralizedVelOfObj
 
@@ -370,13 +396,12 @@ def QRDecompose(J_T):
 
 
 
-def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDes, qDotDes, qDDotDes):
+def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDDot):
 
-    jac = methods.Jacobian(loaded_model, qCurrent)
     M = methods.CalcM(loaded_model, qCurrent)
     h = methods.CalcH(loaded_model, dampingCoeff, qCurrent, qDotCurrent, qDDotCurrent, M)
 
-    desiredTorque = M.dot(qDDotDes) + h
+    desiredTorque = M.dot(qDDot) + h
 
     return desiredTorque
 
@@ -388,7 +413,7 @@ def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
     poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
     velOfObj = methods.CalcGeneralizedVelOfObject(loaded_model, qCurrent,
                                                   qDotCurrent)
-    velOfObj = CalcEulerGeneralizedVel(poseOfObj, velOfObj)
+    velOfObj = CalcEulerGeneralizedVel(poseOfObj, velOfObj, qCurrent)
 
 
     zDesObjInQuater = EulerToQuaternion(poseDes)
@@ -473,7 +498,7 @@ def JointStatesCallback(data):
     xDesObj, xDotDesObj, xDDotDesObj = CalcDesiredTraj(xDes_t, xDotDes_t,
                                                        xDDotDes_t, timePrime)
 
-    desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj)
+    desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj, qCurrent)
 
     desiredGeneralizedAccelOfObj = CalcEulerGeneralizedAccel(xDesObj,
                                                              xDotDesObj,
@@ -486,8 +511,7 @@ def JointStatesCallback(data):
                                                  desiredGeneralizedAccelOfObj)
 
     # jointTau = methods.InverseDynamic(loaded_model, jointPose, jointVel, jointAccel)
-    jointTau = InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, jointPose,
-                              jointVel, jointAccel)
+    jointTau = InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, jointAccel)
 
     PubTorqueToGazebo(jointTau)
 
