@@ -21,7 +21,7 @@
   <xacro:property name="mass_arm_two" value=".5" />
   <xacro:property name="mass_arm_three" value=".5" />
   <xacro:property name="mass_arm_four" value=".5" />
-  <xacro:property name="mass_hand" value=".1" />
+  <xacro:property name="mass_hand" value="1" />
   <xacro:property name="mass_box" value="1" />
 
 
@@ -62,10 +62,10 @@
   <xacro:property name="friction_ratio_arm_two" value="1" />
 
   <xacro:property name="damping_ratio_arm_three" value="1" />
-  <xacro:property name="friction_ratio_arm_three" value="5" />
+  <xacro:property name="friction_ratio_arm_three" value="1" />
 
   <xacro:property name="damping_ratio_arm_four" value="1" />
-  <xacro:property name="friction_ratio_arm_four" value=".1" />
+  <xacro:property name="friction_ratio_arm_four" value="1" />
 
   <xacro:property name="damping_ratio_hand" value="1" />
   <xacro:property name="friction_ratio_hand" value=".1" />
@@ -433,7 +433,7 @@
 
 
 
-  <joint name="box_to_hand" type="fixed">
+  <!-- <joint name="box_to_hand" type="fixed">
       <origin rpy="0 0 0" xyz="0 ${width_box/2 + width_arm/2} 0"/>
       <parent link="hand"/>
       <child link="box"/>
@@ -461,7 +461,7 @@
         	  iyy="${i_box_yy}" iyz="0.0"
         	  izz="${i_box_zz}"/>
       </inertial>
-  </link>
+  </link> -->
 
 
 

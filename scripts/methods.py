@@ -40,8 +40,8 @@ def CalcH(model, dampingVec, q, qdot, qddot, M):
     tau = np.zeros(model.q_size)
 
     rbdl.InverseDynamics(model, q, qdot, np.zeros(model.qdot_size), tau)  # (1*6)
-    # H = tau - M.dot(qddot)
-    H = tau - dampingVec.dot(qdot)
+    H = tau - M.dot(qddot)
+    # H = tau - dampingVec.dot(qdot)  # !!!!! wrong result; harsh vibration
 
     return H
 
@@ -260,9 +260,10 @@ def RotationToEuler(q):
 ####### Compute position of COM of the object:
 def GeneralizedPoseOfObj(model, q):
 
-    lengthOfBox = .25
-    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.])
+    # lengthOfBox = .25
+    # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    lengthHand = .15
+    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
 
     poseOfObj = rbdl.CalcBodyToBaseCoordinates(model, q,
                                                model.GetBodyId('hand'),
@@ -272,17 +273,6 @@ def GeneralizedPoseOfObj(model, q):
                                                      model.GetBodyId('hand'))
 
     orientationOfBox = RotationMatToEuler(rotationMatOfBox)
-    # kir = rotationToVtk(rotationMatOfBox)
-    # print(kir)
-    # kir = rotation_angles(rotationMatOfBox, 'zxy')
-
-    # q[1] = q[1] + pi/3
-    # q[2] = q[2] + pi/3
-    # q[5] = q[5] - pi/6
-
-    kir = rbdl.CalcBodyWorldOrientation(model, q, model.GetBodyId('arm_three'))
-    kirekhar = RotationMatToEuler(kir)
-    # print(kirekhar)
 
     generalizedPoseOfEndEffector = np.concatenate((poseOfObj, orientationOfBox))
 
@@ -295,9 +285,10 @@ def Jacobian(model, q):
     workspaceDof = 6
     jc = np.zeros((workspaceDof, model.q_size))  # (6*6): due to whole 'model' and 'q' are imported.
 
-    lengthOfBox = .25
-    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
+    # lengthOfBox = .25
+    # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    lengthHand = .15
+    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
 
     rbdl.CalcPointJacobian6D(model, q, model.GetBodyId('hand'),
                              poseOfObjInHandFrame, jc)  # (6*6)
@@ -315,9 +306,10 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
     Calculate generalized velocity of the object via the right-hand ...
     kinematics in base frame.
     """
-    lengthOfBox = .25
-    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
+    # lengthOfBox = .25
+    # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    lengthHand = .15
+    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
 
     generalizedVelOfObj = rbdl.CalcPointVelocity6D(model, q, qdot,
                                                    model.GetBodyId('hand'),
@@ -335,9 +327,10 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
 def CalcdJdq(model, q, qdot, qddot):
     """Compute linear acceleration of a point on body."""
 
-    lengthOfBox = .25
-    poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
-    # poseOfObjInHandFrame = np.asarray([0., 0., 0.0])
+    # lengthOfBox = .25
+    # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
+    lengthHand = .15
+    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
 
     bodyAccel = rbdl.CalcPointAcceleration6D(model, q, qdot, qddot,
                                              model.GetBodyId('hand'),

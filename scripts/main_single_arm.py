@@ -37,22 +37,29 @@ W_invDyn = np.eye(singleArmDof)
 # k_p = 20
 # k_o = 20
 
-k_p = np.array([[10, 0, 0],
-                [0, 10, 0],
-                [0, 0, 10]])
+k_p = np.array([[5, 0, 0],
+                [0, 5, 0],
+                [0, 0, 5]])
 
-k_o = np.array([[10, 0, 0],
-                [0, 10, 0],
-                [0, 0, 10]])
+k_o = np.array([[.5, 0, 0],
+                [0, .5, 0],
+                [0, 0, .5]])
 
 
-kp_a = np.array([[330, 0, 0, 0, 0, 0],
-                 [0, 330, 0, 0, 0, 0],
-                 [0, 0, 330, 0, 0, 0],
-                 [0, 0, 0, 500, 0, 0],
-                 [0, 0, 0, 0, 330, 0],
-                 [0, 0, 0, 0, 0, 600]])
-kd_a = kp_a/12
+
+kp_a = np.array([[130, 0, 0, 0, 0, 0],
+                 [0, 130, 0, 0, 0, 0],
+                 [0, 0, 130, 0, 0, 0],
+                 [0, 0, 0, 200, 0, 0],
+                 [0, 0, 0, 0, 200, 0],
+                 [0, 0, 0, 0, 0, 300]])
+
+kd_a = np.array([[13, 0, 0, 0, 0, 0],
+                 [0, 13, 0, 0, 0, 0],
+                 [0, 0, 13, 0, 0, 0],
+                 [0, 0, 0, 10, 0, 0],
+                 [0, 0, 0, 0, 20, 0],
+                 [0, 0, 0, 0, 0, 20]])
 
 ## TODO: damping coefficients must be set similar to xacro model:
 dampingCoeff = np.array([0.]*singleArmDof)
@@ -82,8 +89,8 @@ function of 'ChooseRef' and of course the following trajecory definitions:
 Note: translational coordinations (x, y, z) are in world frame, so avoid values
 which are close to 'child_neck' frame.
 """
-poseOfObjInWorld_x = 0.
-poseOfObjInWorld_y = .773 + length_box/2
+poseOfObjInWorld_x = 0.25
+poseOfObjInWorld_y = .773
 poseOfObjInWorld_z = .195
 
 
@@ -91,7 +98,7 @@ poseOfObjInWorld_z = .195
 numOfTraj = 2
 
 desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([.2, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x - .2, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
 desiredFinalStateOfObj_traj_2 = desiredInitialStateOfObj_traj_1
@@ -425,7 +432,8 @@ def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
                                                   zCurrentObjInQuater)
 
     ## desired acceleration of the object in task-space: below equ(21)
-    accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseErrorInQuater)
+    # accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseErrorInQuater)
+    accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseDes - poseOfObj)
 
     dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
 
@@ -498,6 +506,7 @@ def JointStatesCallback(data):
     xDesObj, xDotDesObj, xDDotDesObj = CalcDesiredTraj(xDes_t, xDotDes_t,
                                                        xDDotDes_t, timePrime)
 
+
     desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj, qCurrent)
 
     desiredGeneralizedAccelOfObj = CalcEulerGeneralizedAccel(xDesObj,
@@ -507,10 +516,9 @@ def JointStatesCallback(data):
     ## detemine desired states of robot in joint-space: (qDDot_desired, ...)
     jointPose, jointVel, jointAccel = Task2Joint(qCurrent, qDotCurrent,
                                                  qDDotCurrent, xDesObj,
-                                                 desiredGeneralizedVelOfObj,
-                                                 desiredGeneralizedAccelOfObj)
+                                                 xDotDesObj,
+                                                 xDDotDesObj)
 
-    # jointTau = methods.InverseDynamic(loaded_model, jointPose, jointVel, jointAccel)
     jointTau = InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, jointAccel)
 
     PubTorqueToGazebo(jointTau)
