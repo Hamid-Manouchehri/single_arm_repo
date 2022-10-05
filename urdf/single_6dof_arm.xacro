@@ -62,7 +62,7 @@
   <xacro:property name="friction_ratio_arm_two" value="1" />
 
   <xacro:property name="damping_ratio_arm_three" value="1" />
-  <xacro:property name="friction_ratio_arm_three" value="1" />
+  <xacro:property name="friction_ratio_arm_three" value="5" />
 
   <xacro:property name="damping_ratio_arm_four" value="1" />
   <xacro:property name="friction_ratio_arm_four" value="1" />
@@ -400,7 +400,7 @@
 
   <joint name="hand_to_arm_four" type="revolute">
     <axis xyz="0 0 1"/>
-    <limit effort="50" lower="-6.28" upper="6.28" velocity="4"/>
+    <limit effort="100" lower="-6.28" upper="6.28" velocity="10"/>
     <origin rpy="0 0 ${-PI/6}" xyz="${length_arm_four} 0 0"/>
     <parent link="arm_four"/>
     <child link="hand"/>

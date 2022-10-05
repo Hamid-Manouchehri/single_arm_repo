@@ -263,7 +263,7 @@ def GeneralizedPoseOfObj(model, q):
     # lengthOfBox = .25
     # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
     lengthHand = .15
-    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
+    poseOfObjInHandFrame = np.asarray([lengthHand, 0., 0.])
 
     poseOfObj = rbdl.CalcBodyToBaseCoordinates(model, q,
                                                model.GetBodyId('hand'),
@@ -288,7 +288,7 @@ def Jacobian(model, q):
     # lengthOfBox = .25
     # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
     lengthHand = .15
-    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
+    poseOfObjInHandFrame = np.asarray([lengthHand, 0., 0.])
 
     rbdl.CalcPointJacobian6D(model, q, model.GetBodyId('hand'),
                              poseOfObjInHandFrame, jc)  # (6*6)
@@ -309,7 +309,7 @@ def CalcGeneralizedVelOfObject(model, q, qdot):
     # lengthOfBox = .25
     # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
     lengthHand = .15
-    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
+    poseOfObjInHandFrame = np.asarray([lengthHand, 0., 0.])
 
     generalizedVelOfObj = rbdl.CalcPointVelocity6D(model, q, qdot,
                                                    model.GetBodyId('hand'),
@@ -330,7 +330,7 @@ def CalcdJdq(model, q, qdot, qddot):
     # lengthOfBox = .25
     # poseOfObjInHandFrame = np.asarray([lengthOfBox/2, 0.25, 0.0])
     lengthHand = .15
-    poseOfObjInHandFrame = np.asarray([lengthHand/2, 0., 0.])
+    poseOfObjInHandFrame = np.asarray([lengthHand, 0., 0.])
 
     bodyAccel = rbdl.CalcPointAcceleration6D(model, q, qdot, qddot,
                                              model.GetBodyId('hand'),

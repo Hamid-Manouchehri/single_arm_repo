@@ -28,6 +28,7 @@ time_ = 0
 dt = 0.01
 t_end = 5
 g0 = 9.81
+writeHeaderOnceFlag = True
 finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite time
 
 workspaceDof = 6  # TODO
@@ -37,9 +38,9 @@ W_invDyn = np.eye(singleArmDof)
 # k_p = 20
 # k_o = 20
 
-k_p = np.array([[5, 0, 0],
-                [0, 5, 0],
-                [0, 0, 5]])
+k_p = np.array([[10, 0, 0],
+                [0, 10, 0],
+                [0, 0, 10]])
 
 k_o = np.array([[.5, 0, 0],
                 [0, .5, 0],
@@ -50,16 +51,16 @@ k_o = np.array([[.5, 0, 0],
 kp_a = np.array([[130, 0, 0, 0, 0, 0],
                  [0, 130, 0, 0, 0, 0],
                  [0, 0, 130, 0, 0, 0],
-                 [0, 0, 0, 200, 0, 0],
+                 [0, 0, 0, 400, 0, 0],
                  [0, 0, 0, 0, 200, 0],
-                 [0, 0, 0, 0, 0, 300]])
+                 [0, 0, 0, 0, 0, 350]])
 
 kd_a = np.array([[13, 0, 0, 0, 0, 0],
                  [0, 13, 0, 0, 0, 0],
                  [0, 0, 13, 0, 0, 0],
                  [0, 0, 0, 10, 0, 0],
                  [0, 0, 0, 0, 20, 0],
-                 [0, 0, 0, 0, 0, 20]])
+                 [0, 0, 0, 0, 0, 10]])
 
 ## TODO: damping coefficients must be set similar to xacro model:
 dampingCoeff = np.array([0.]*singleArmDof)
@@ -90,15 +91,15 @@ Note: translational coordinations (x, y, z) are in world frame, so avoid values
 which are close to 'child_neck' frame.
 """
 poseOfObjInWorld_x = 0.25
-poseOfObjInWorld_y = .773
-poseOfObjInWorld_z = .195
+poseOfObjInWorld_y = .715
+poseOfObjInWorld_z = .164
 
 
 ## Path attribures:
 numOfTraj = 2
 
 desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x - .2, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y - .3, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
 desiredFinalStateOfObj_traj_2 = desiredInitialStateOfObj_traj_1
@@ -363,6 +364,7 @@ def CalcEulerGeneralizedVel(xObjDes, xDotObjDes, qCurrent):
     yaw = xObjDes[5]
 
     poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
+    # print(np.round(poseOfObj, 3))
 
     translationalVelOfObjRef = xDotObjDes[:3] + k_p.dot((xObjDes[:3] - poseOfObj[:3]))
 
@@ -402,6 +404,34 @@ def QRDecompose(J_T):
     return qr_Q, qr_R
 
 
+def WriteToCSV(data, legendList=None, t=None):
+    """
+    Write data to the CSV file to have a live plot by reading the file ...
+    simulataneously.
+
+    Pass 'data' as a list of  data and 'legendList' as a list of string type,
+    legend for each value of the plot.
+    Note: 'legendList' and 't' are arbitrary arguments.
+    """
+    global plotLegend, writeHeaderOnceFlag
+
+    plotLegend = legendList
+
+    if t is None:
+        ## to set the time if it is necessary.
+        t = time_
+
+    with open(pathToCSVFile + CSVFileName_plot_data, 'a', newline='') as \
+            file:
+        writer = csv.writer(file)
+
+        if writeHeaderOnceFlag is True and legendList is not None:
+            ## Add header to the CSV file.
+            writer.writerow(np.hstack(['time', legendList]))
+            writeHeaderOnceFlag = False
+
+        writer.writerow(np.hstack([t, data]))  # the first element is time var.
+
 
 def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDDot):
 
@@ -432,8 +462,8 @@ def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
                                                   zCurrentObjInQuater)
 
     ## desired acceleration of the object in task-space: below equ(21)
-    # accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseErrorInQuater)
-    accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseDes - poseOfObj)
+    accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseErrorInQuater)
+    # WriteToCSV(accelDes[:3], ['ax', 'ay', 'az'])
 
     dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
 
