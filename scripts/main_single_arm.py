@@ -28,14 +28,13 @@ time_ = 0
 dt = 0.01
 t_end = 5
 g0 = 9.81
+plotLegend = ''
+writeHeaderOnceFlag = True
 finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite time
 
 workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 W_invDyn = np.eye(singleArmDof)
-
-# k_p = 20
-# k_o = 20
 
 k_p = np.array([[10, 0, 0],
                 [0, 10, 0],
@@ -45,13 +44,7 @@ k_o = np.array([[10, 0, 0],
                 [0, 10, 0],
                 [0, 0, 10]])
 
-
-kp_a = np.array([[330, 0, 0, 0, 0, 0],
-                 [0, 330, 0, 0, 0, 0],
-                 [0, 0, 330, 0, 0, 0],
-                 [0, 0, 0, 500, 0, 0],
-                 [0, 0, 0, 0, 330, 0],
-                 [0, 0, 0, 0, 0, 600]])
+kp_a = 330
 kd_a = kp_a/12
 
 ## TODO: damping coefficients must be set similar to xacro model:
@@ -91,7 +84,7 @@ poseOfObjInWorld_z = .195
 numOfTraj = 2
 
 desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([.2, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y-.4, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
 desiredFinalStateOfObj_traj_2 = desiredInitialStateOfObj_traj_1
@@ -395,11 +388,39 @@ def QRDecompose(J_T):
     return qr_Q, qr_R
 
 
+def WriteToCSV(data, legendList=None, t=None):
+    """
+    Write data to the CSV file to have a live plot by reading the file ...
+    simulataneously.
+
+    Pass 'data' as a list of  data and 'legendList' as a list of string type,
+    legend for each value of the plot.
+    Note: 'legendList' and 't' are arbitrary arguments.
+    """
+    global plotLegend, writeHeaderOnceFlag
+
+    plotLegend = legendList
+
+    if t is None:
+        ## to set the time if it is necessary.
+        t = time_
+
+    with open(pathToCSVFile + CSVFileName_plot_data, 'a', newline='') as \
+            file:
+        writer = csv.writer(file)
+
+        if writeHeaderOnceFlag is True and legendList is not None:
+            ## Add header to the CSV file.
+            writer.writerow(np.hstack(['time', legendList]))
+            writeHeaderOnceFlag = False
+
+        writer.writerow(np.hstack([t, data]))  # the first element is time var.
+
 
 def InverseDynamic(qCurrent, qDotCurrent, qDDotCurrent, qDDot):
 
     M = methods.CalcM(loaded_model, qCurrent)
-    h = methods.CalcH(loaded_model, dampingCoeff, qCurrent, qDotCurrent, qDDotCurrent, M)
+    h = methods.CalcH(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)
 
     desiredTorque = M.dot(qDDot) + h
 
@@ -425,7 +446,7 @@ def Task2Joint(qCurrent, qDotCurrent, qDDotCurrent, poseDes, velDes, accelDes):
                                                   zCurrentObjInQuater)
 
     ## desired acceleration of the object in task-space: below equ(21)
-    accelDes = accelDes + kd_a.dot((velDes - velOfObj)) + kp_a.dot(poseErrorInQuater)
+    accelDes = accelDes + kd_a*(velDes - velOfObj) + kp_a*poseErrorInQuater
 
     dJdq = methods.CalcdJdq(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)  # JDot_a*qDot_a(1*6)
 
@@ -497,6 +518,9 @@ def JointStatesCallback(data):
     xDes_t, xDotDes_t, xDDotDes_t, timePrime = ChooseRef(time_)
     xDesObj, xDotDesObj, xDDotDesObj = CalcDesiredTraj(xDes_t, xDotDes_t,
                                                        xDDotDes_t, timePrime)
+
+    h = methods.CalcH(loaded_model, qCurrent, qDotCurrent, qDDotCurrent)
+    WriteToCSV(h)
 
     desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj, qCurrent)
 

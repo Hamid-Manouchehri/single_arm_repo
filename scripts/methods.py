@@ -33,17 +33,15 @@ def CalcM(model, q):
 
 
 
-def CalcH(model, dampingVec, q, qdot, qddot, M):
+def CalcH(model, q, qdot, qddot):
     """Compute centrifugal, coriolis and gravity force terms."""
     q = np.array(q, dtype=float)
     qdot = np.array(qdot, dtype=float)
     tau = np.zeros(model.q_size)
 
-    rbdl.InverseDynamics(model, q, qdot, np.zeros(model.qdot_size), tau)  # (1*6)
-    # H = tau - M.dot(qddot)
-    H = tau - dampingVec.dot(qdot)
+    rbdl.InverseDynamics(model, q, qdot, qddot, tau)  # (1*6)
 
-    return H
+    return tau
 
 
 

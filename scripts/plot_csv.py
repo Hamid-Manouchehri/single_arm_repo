@@ -16,13 +16,12 @@ from sys import path
 path.insert(1, '/home/rebel/bimanual_ws/src/single_arm_pkg/config/')  # TODO: Insert dir of config folder of the package.
 import config
 
-titleOfPlot = "< right arm torque profile >"  # TODO
+titleOfPlot = "< coriolis and centrifugal forces >"  # TODO
 titleOfXaxis = "time (s)"  # TODO
-titleOfYaxis = "right arm torque (Nm)"  # TODO
+titleOfYaxis = "h (Nm)"  # TODO
 
 CSVFileName_livePlot_data = config.plot_csv_dic['CSVFileName']  # TODO: Change 'plot_csv_dic' to whatever is defined in 'config.py'
 pathToCSVFile = config.plot_csv_dic['CSVFileDirectory']  # TODO: Change 'plot_csv_dic' to whatever is defined in 'config.py'
-
 
 
 def ReadCSV():
