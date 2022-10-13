@@ -26,7 +26,7 @@ import methods  # TODO: change the file name if necessary.
 
 time_ = 0
 dt = 0.01
-t_end = 5
+t_end = 6
 g0 = 9.81
 writeHeaderOnceFlag = True
 finiteTimeSimFlag = True  # TODO: True: simulate to 't_end', Flase: Infinite time
@@ -35,8 +35,7 @@ workspaceDof = 6  # TODO
 singleArmDof = 6  # TODO
 W_invDyn = np.eye(singleArmDof)
 
-# k_p = 20
-# k_o = 20
+
 
 k_p = np.array([[10, 0, 0],
                 [0, 10, 0],
@@ -91,15 +90,15 @@ Note: translational coordinations (x, y, z) are in world frame, so avoid values
 which are close to 'child_neck' frame.
 """
 poseOfObjInWorld_x = 0.25
-poseOfObjInWorld_y = .715
-poseOfObjInWorld_z = .164
+poseOfObjInWorld_y = .615
+poseOfObjInWorld_z = .45
 
 
-## Path attribures:
+## Path attributes:
 numOfTraj = 2
 
 desiredInitialStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y, poseOfObjInWorld_z, 0., 0., np.pi/2])
-desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x, poseOfObjInWorld_y - .3, poseOfObjInWorld_z, 0., 0., np.pi/2])
+desiredFinalStateOfObj_traj_1 = np.array([poseOfObjInWorld_x - .4, poseOfObjInWorld_y - .2, poseOfObjInWorld_z, 0., 0., np.pi/2])
 
 desiredInitialStateOfObj_traj_2 = desiredFinalStateOfObj_traj_1
 desiredFinalStateOfObj_traj_2 = desiredInitialStateOfObj_traj_1
@@ -364,7 +363,6 @@ def CalcEulerGeneralizedVel(xObjDes, xDotObjDes, qCurrent):
     yaw = xObjDes[5]
 
     poseOfObj = methods.GeneralizedPoseOfObj(loaded_model, qCurrent)
-    # print(np.round(poseOfObj, 3))
 
     translationalVelOfObjRef = xDotObjDes[:3] + k_p.dot((xObjDes[:3] - poseOfObj[:3]))
 

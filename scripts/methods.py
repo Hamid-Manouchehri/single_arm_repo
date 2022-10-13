@@ -40,10 +40,10 @@ def CalcH(model, dampingVec, q, qdot, qddot, M):
     tau = np.zeros(model.q_size)
 
     rbdl.InverseDynamics(model, q, qdot, np.zeros(model.qdot_size), tau)  # (1*6)
-    H = tau - M.dot(qddot)
+    # H = tau - M.dot(qddot)  # qddot = 0
     # H = tau - dampingVec.dot(qdot)  # !!!!! wrong result; harsh vibration
 
-    return H
+    return tau
 
 
 
