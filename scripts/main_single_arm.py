@@ -534,7 +534,6 @@ def JointStatesCallback(data):
     xDesObj, xDotDesObj, xDDotDesObj = CalcDesiredTraj(xDes_t, xDotDes_t,
                                                        xDDotDes_t, timePrime)
 
-
     desiredGeneralizedVelOfObj = CalcEulerGeneralizedVel(xDesObj, xDotDesObj, qCurrent)
 
     desiredGeneralizedAccelOfObj = CalcEulerGeneralizedAccel(xDesObj,
